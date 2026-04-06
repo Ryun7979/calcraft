@@ -15,15 +15,9 @@ export default function App() {
     questions,
     answers,
     currentIndex,
-    inputValue,
-    setInputValue,
-    remainderInputValue,
-    setRemainderInputValue,
     feedback,
     showHint,
     hintText,
-    inputRef,
-    remainderInputRef,
     handleHint,
     startGame,
     handleAnswer,
@@ -49,15 +43,9 @@ export default function App() {
             selectedGrade={selectedGrade}
             selectedOp={selectedOp}
             questions={questions}
-            inputValue={inputValue}
-            setInputValue={setInputValue}
-            remainderInputValue={remainderInputValue}
-            setRemainderInputValue={setRemainderInputValue}
             feedback={feedback}
             showHint={showHint}
             hintText={hintText}
-            inputRef={inputRef}
-            remainderInputRef={remainderInputRef}
             handleHint={handleHint}
             handleAnswer={handleAnswer}
           />
@@ -74,3 +62,4 @@ export default function App() {
     </div>
   );
 }
+

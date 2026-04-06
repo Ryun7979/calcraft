@@ -2,34 +2,33 @@ import correctSound from '../assets/sound/correct.mp3';
 import incorrectSound from '../assets/sound/Incorrect.mp3';
 import clickSound from '../assets/sound/pic.mp3';
 
-let audioCtx: AudioContext | null = null;
-
-const getAudioContext = () => {
-  if (typeof window === 'undefined') return null;
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  if (audioCtx.state === 'suspended') {
-    audioCtx.resume();
-  }
-  return audioCtx;
+// Pre-load audio files
+const sounds: Record<string, HTMLAudioElement> = {
+  correct: new Audio(correctSound),
+  incorrect: new Audio(incorrectSound),
+  click: new Audio(clickSound),
 };
 
-const playAudioFile = (url: string) => {
-  const audio = new Audio(url);
+const playSound = (name: string) => {
+  const audio = sounds[name];
+  if (!audio) return;
+  
+  // Reset playback if sound is already playing
+  audio.currentTime = 0;
   audio.play().catch(e => {
-    console.error('Audio playback failed', e);
+    console.error(`Audio playback failed for ${name}`, e);
   });
 };
 
 export const playClickSound = () => {
-  playAudioFile(clickSound);
+  playSound('click');
 };
 
 export const playCorrectSound = () => {
-  playAudioFile(correctSound);
+  playSound('correct');
 };
 
 export const playIncorrectSound = () => {
-  playAudioFile(incorrectSound);
+  playSound('incorrect');
 };
+
