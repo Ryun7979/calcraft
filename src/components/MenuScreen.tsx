@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Play } from 'lucide-react';
 import { Grade, Operation } from '../types';
 import { OP_NAMES, GRADE_OPERATIONS, pageTransition } from '../constants';
+import { DIFFICULTY_INFO } from '../constants/difficulty';
 import { playClickSound } from '../lib/audio';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
@@ -23,11 +24,13 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
   setSelectedOp,
   startGame,
 }) => {
+  const info = DIFFICULTY_INFO[selectedOp][selectedGrade];
+
   return (
     <motion.div 
       key="menu"
       {...pageTransition}
-      className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 space-y-16 backdrop-brightness-50"
+      className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 space-y-12 backdrop-brightness-50"
     >
       <div className="flex flex-col items-center space-y-4">
         <h1 className="mc-title text-7xl md:text-9xl tracking-tight text-center">
@@ -38,9 +41,9 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
         </span>
       </div>
       
-      <div className="w-full max-w-5xl space-y-12">
-        <Panel className="space-y-8">
-          <h2 className="text-2xl md:text-4xl font-bold text-gray-300 text-center flex items-center justify-center gap-3">
+      <div className="w-full max-w-5xl space-y-8">
+        <Panel className="space-y-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-300 text-center flex items-center justify-center gap-3">
             レベルを選択
           </h2>
           <div className="grid grid-cols-5 gap-4">
@@ -55,7 +58,7 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
                     setSelectedOp(GRADE_OPERATIONS[g][0]);
                   }
                 }}
-                className={cn("text-2xl h-20", selectedGrade === g && "scale-105")}
+                className={cn("text-2xl h-16", selectedGrade === g && "scale-105")}
               >
                 Lv {g}
               </Button>
@@ -63,8 +66,8 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
           </div>
         </Panel>
 
-        <Panel className="space-y-8">
-          <h2 className="text-2xl md:text-4xl font-bold text-gray-300 text-center">計算を選択</h2>
+        <Panel className="space-y-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-300 text-center">計算を選択</h2>
           <div className="flex flex-wrap justify-center gap-6">
             {GRADE_OPERATIONS[selectedGrade].map((op) => (
               <Button
@@ -74,11 +77,24 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
                   playClickSound();
                   setSelectedOp(op);
                 }}
-                className={cn("text-3xl min-w-[200px] h-20", selectedOp === op && "scale-105")}
+                className={cn("text-2xl min-w-[180px] h-16", selectedOp === op && "scale-105")}
               >
                 {OP_NAMES[op]}
               </Button>
             ))}
+          </div>
+        </Panel>
+
+        <Panel className="border-2 border-yellow-500/30 bg-black/60 py-6">
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex items-center gap-4 text-gray-400 text-lg">
+              <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 border border-yellow-500/30 font-bold">出題傾向</span>
+              <span className="tracking-wide">{info.tendency}</span>
+            </div>
+            <div className="text-3xl font-bold text-white flex items-center gap-4">
+              <span className="text-lg text-gray-400 font-normal">学習内容:</span>
+              <span className="text-green-400 tracking-wider">小学校 {info.grade.replace('小', '')}年生 相当</span>
+            </div>
           </div>
         </Panel>
       </div>
@@ -86,7 +102,7 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
       <Button
         variant="orange"
         onClick={startGame}
-        className="text-6xl w-full max-w-2xl h-40 mt-12 flex items-center gap-6"
+        className="text-6xl w-full max-w-2xl h-36 flex items-center gap-8 shadow-2xl"
       >
         <Play fill="currentColor" className="w-16 h-16" />
         あそぶ！
