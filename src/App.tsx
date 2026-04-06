@@ -17,10 +17,13 @@ export default function App() {
     currentIndex,
     inputValue,
     setInputValue,
+    remainderInputValue,
+    setRemainderInputValue,
     feedback,
     showHint,
     hintText,
     inputRef,
+    remainderInputRef,
     handleHint,
     startGame,
     handleAnswer,
@@ -48,10 +51,13 @@ export default function App() {
             questions={questions}
             inputValue={inputValue}
             setInputValue={setInputValue}
+            remainderInputValue={remainderInputValue}
+            setRemainderInputValue={setRemainderInputValue}
             feedback={feedback}
             showHint={showHint}
             hintText={hintText}
             inputRef={inputRef}
+            remainderInputRef={remainderInputRef}
             handleHint={handleHint}
             handleAnswer={handleAnswer}
           />

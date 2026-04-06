@@ -13,6 +13,7 @@ export const useGame = () => {
   const [answers, setAnswers] = useState<AnsweredQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [inputValue, setInputValue] = useState('');
+  const [remainderInputValue, setRemainderInputValue] = useState('');
   
   const [feedback, setFeedback] = useState<'correct' | 'incorrect' | null>(null);
   
@@ -21,6 +22,7 @@ export const useGame = () => {
   const hintTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const inputRef = useRef<HTMLInputElement>(null);
+  const remainderInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setShowHint(false);
@@ -66,6 +68,7 @@ export const useGame = () => {
     setAnswers([]);
     setCurrentIndex(0);
     setInputValue('');
+    setRemainderInputValue('');
     setFeedback(null);
     setGameState('playing');
     
@@ -80,7 +83,14 @@ export const useGame = () => {
 
     const currentQ = questions[currentIndex];
     const parsedInput = parseInt(inputValue, 10);
-    const isCorrect = !skipped && !isNaN(parsedInput) && parsedInput === currentQ.answer;
+    const parsedRemainder = parseInt(remainderInputValue, 10);
+    
+    const isRemainderRequired = currentQ.op === 'div' && currentQ.remainder !== undefined;
+    
+    let isCorrect = !skipped && !isNaN(parsedInput) && parsedInput === currentQ.answer;
+    if (isCorrect && isRemainderRequired) {
+      isCorrect = !isNaN(parsedRemainder) && parsedRemainder === currentQ.remainder;
+    }
 
     if (isCorrect) {
       playCorrectSound();
@@ -93,6 +103,7 @@ export const useGame = () => {
     const answeredQ: AnsweredQuestion = {
       ...currentQ,
       userAnswer: skipped || isNaN(parsedInput) ? null : parsedInput,
+      userRemainder: isRemainderRequired ? (skipped || isNaN(parsedRemainder) ? null : parsedRemainder) : undefined,
       isCorrect,
     };
 
@@ -100,6 +111,7 @@ export const useGame = () => {
       setAnswers((prev) => [...prev, answeredQ]);
       setFeedback(null);
       setInputValue('');
+      setRemainderInputValue('');
       
       if (currentIndex + 1 < TOTAL_QUESTIONS) {
         setCurrentIndex((prev) => prev + 1);
@@ -107,7 +119,7 @@ export const useGame = () => {
         setGameState('result');
       }
     }, 1000);
-  }, [currentIndex, feedback, inputValue, questions]);
+  }, [currentIndex, feedback, inputValue, remainderInputValue, questions]);
 
   const backToMenu = useCallback(() => {
     playClickSound();
@@ -126,10 +138,13 @@ export const useGame = () => {
     currentIndex,
     inputValue,
     setInputValue,
+    remainderInputValue,
+    setRemainderInputValue,
     feedback,
     showHint,
     hintText,
     inputRef,
+    remainderInputRef,
     handleHint,
     startGame,
     handleAnswer,

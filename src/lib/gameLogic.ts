@@ -130,7 +130,8 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
       answer = num1 * num2;
       break;
 
-    case 'div':
+    case 'div': {
+      let remainder = 0;
       if (grade <= 3) { // 九九の逆（答えが1桁）
         num2 = random(2, 9);
         answer = random(2, 9);
@@ -138,33 +139,37 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
       } else if (grade === 4) { // 2桁 ÷ 1桁（商が10以上）
         num2 = random(2, 9);
         answer = random(10, 20);
-        num1 = num2 * answer;
+        num1 = num2 * answer + random(0, num2 - 1);
       } else if (grade === 5) { // 3桁 ÷ 1桁（商が100以上、キリが良い数）
         num2 = random(2, 9);
         answer = getNiceNumber(100, 300, 10);
-        num1 = num2 * answer;
+        num1 = num2 * answer + random(0, num2 - 1);
       } else if (grade === 6) { // 3桁 ÷ 1桁（ランダム）
         num2 = random(2, 9);
         answer = random(11, 99);
-        num1 = num2 * answer;
+        num1 = num2 * answer + random(0, num2 - 1);
       } else if (grade === 7) { // 2桁 ÷ 10の倍数
         num2 = getNiceNumber(10, 40);
         answer = random(2, 9);
-        num1 = num2 * answer;
+        num1 = num2 * answer + random(0, num2 - 1);
       } else if (grade === 8) { // 3桁 ÷ 10の倍数
         num2 = getNiceNumber(10, 90);
         answer = getNiceNumber(10, 20);
-        num1 = num2 * answer;
+        num1 = num2 * answer + random(0, num2 - 1);
       } else if (grade === 9) { // 3桁 ÷ 2桁
         num2 = random(11, 50);
         answer = random(2, 19);
-        num1 = num2 * answer;
+        num1 = num2 * answer + random(0, num2 - 1);
       } else { // 4桁 ÷ 2桁
         num2 = random(11, 99);
         answer = random(11, 99);
-        num1 = num2 * answer;
+        num1 = num2 * answer + random(0, num2 - 1);
       }
-      break;
+      
+      const realAnswer = Math.floor(num1 / num2);
+      const realRemainder = num1 % num2;
+      return { num1, num2, op, answer: realAnswer, remainder: realRemainder };
+    }
   }
   return { num1, num2, op, answer };
 };

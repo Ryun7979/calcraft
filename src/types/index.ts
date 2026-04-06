@@ -7,9 +7,11 @@ export interface Question {
   num2: number;
   op: Operation;
   answer: number;
+  remainder?: number;
 }
 
 export interface AnsweredQuestion extends Question {
   userAnswer: number | null;
+  userRemainder?: number | null;
   isCorrect: boolean;
 }

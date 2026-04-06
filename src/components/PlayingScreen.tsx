@@ -12,10 +12,13 @@ interface PlayingScreenProps {
   questions: Question[];
   inputValue: string;
   setInputValue: (val: string) => void;
+  remainderInputValue: string;
+  setRemainderInputValue: (val: string) => void;
   feedback: 'correct' | 'incorrect' | null;
   showHint: boolean;
   hintText: string;
   inputRef: React.RefObject<HTMLInputElement | null>;
+  remainderInputRef: React.RefObject<HTMLInputElement | null>;
   handleHint: () => void;
   handleAnswer: (skipped?: boolean) => void;
 }
@@ -27,10 +30,13 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
   questions,
   inputValue,
   setInputValue,
+  remainderInputValue,
+  setRemainderInputValue,
   feedback,
   showHint,
   hintText,
   inputRef,
+  remainderInputRef,
   handleHint,
   handleAnswer,
 }) => {
@@ -39,9 +45,11 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
       // 正解・不正解のフィードバック中は入力を受け付けない
       if (feedback !== null) return;
       
-      // 数字キー (0-9) が押されたが、入力ボックスにフォーカスがない場合にフォーカスを移す
-      if (/^[0-9]$/.test(e.key) && document.activeElement !== inputRef.current) {
-        inputRef.current?.focus();
+      // 数字キー (0-9) が押されたが、どの入力ボックスにもフォーカスがない場合にフォーカスを移す
+      if (/^[0-9]$/.test(e.key)) {
+        if (document.activeElement !== inputRef.current && document.activeElement !== remainderInputRef.current) {
+          inputRef.current?.focus();
+        }
       }
     };
 
@@ -50,7 +58,19 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
   }, [inputRef, feedback]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && inputValue.trim() !== '') {
+    if (e.key === 'Enter') {
+      if (currentQ.remainder !== undefined && e.currentTarget === inputRef.current) {
+        // 商を入力してEnterを押したら余り欄へ移動
+        remainderInputRef.current?.focus();
+      } else if (inputValue.trim() !== '') {
+        // 余り入力済み（または不要）でEnterを押したら回答
+        handleAnswer();
+      }
+    }
+  };
+
+  const handleRemainderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && inputValue.trim() !== '' && remainderInputValue.trim() !== '') {
       handleAnswer();
     }
   };
@@ -88,24 +108,43 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
                 <span>{currentQ.num2}</span>
               </div>
               
-              <div className="relative w-full max-w-lg mt-8">
-                 <input
-                  ref={inputRef}
-                  type="number"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={feedback !== null}
-                  className="w-full bg-[#1e1e1e] border-4 border-[#373737] px-8 py-6 text-6xl md:text-7xl font-bold text-center text-white focus:outline-none focus:border-green-500 shadow-[inset_4px_4px_0_rgba(0,0,0,0.8)]"
-                  placeholder="?"
-                />
+              <div className="flex flex-col items-center gap-8 w-full">
+                <div className="flex items-center gap-4 w-full max-w-2xl justify-center">
+                   <input
+                    ref={inputRef}
+                    type="number"
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={feedback !== null}
+                    className={`${currentQ.remainder !== undefined ? 'w-1/2' : 'w-full'} bg-[#1e1e1e] border-4 border-[#373737] px-8 py-6 text-6xl md:text-7xl font-bold text-center text-white focus:outline-none focus:border-green-500 shadow-[inset_4px_4px_0_rgba(0,0,0,0.8)]`}
+                    placeholder="?"
+                  />
+                  {currentQ.remainder !== undefined && (
+                    <>
+                      <span className="text-4xl md:text-5xl font-bold text-yellow-400 mc-title whitespace-nowrap">
+                        あまり
+                      </span>
+                      <input
+                        ref={remainderInputRef}
+                        type="number"
+                        value={remainderInputValue}
+                        onChange={(e) => setRemainderInputValue(e.target.value)}
+                        onKeyDown={handleRemainderKeyDown}
+                        disabled={feedback !== null}
+                        className="w-1/3 bg-[#1e1e1e] border-4 border-[#373737] px-4 py-6 text-6xl md:text-7xl font-bold text-center text-white focus:outline-none focus:border-green-500 shadow-[inset_4px_4px_0_rgba(0,0,0,0.8)]"
+                        placeholder="?"
+                      />
+                    </>
+                  )}
+                </div>
                 <AnimatePresence>
                   {showHint && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
-                      className="absolute -top-28 left-0 right-0 text-center z-20"
+                      className="text-center z-20"
                     >
                       <span className="mc-hint text-3xl border-black inline-block whitespace-nowrap">
                         HINT: {hintText}
@@ -122,7 +161,7 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
           <Button
             variant="green"
             onClick={() => handleAnswer(false)}
-            disabled={inputValue.trim() === '' || feedback !== null}
+            disabled={inputValue.trim() === '' || (currentQ.remainder !== undefined && remainderInputValue.trim() === '') || feedback !== null}
             className="text-4xl h-32 flex-1"
           >
             こたえる

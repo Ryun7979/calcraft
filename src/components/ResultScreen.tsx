@@ -46,12 +46,22 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
                 <span className="text-gray-400 font-bold text-xl">Q{i + 1}</span>
                 <span className="text-3xl font-bold tracking-widest text-white">
                   {ans.num1} {OP_SYMBOLS[ans.op]} {ans.num2} = {ans.answer}
+                  {ans.op === 'div' && ans.remainder !== undefined && (
+                    <span className="text-2xl ml-2 text-yellow-400">あまり {ans.remainder}</span>
+                  )}
                 </span>
               </div>
               <div className="flex items-center gap-8">
                 <div className="text-right">
                   <span className="block text-xs text-gray-400 mb-1">あなたのこたえ</span>
-                  <span className="text-2xl font-bold">{ans.userAnswer !== null ? ans.userAnswer : 'ー'}</span>
+                  <span className="text-2xl font-bold">
+                    {ans.userAnswer !== null ? ans.userAnswer : 'ー'}
+                    {ans.op === 'div' && ans.remainder !== undefined && (
+                      <span className="text-lg ml-2">
+                        あまり {ans.userRemainder !== null && ans.userRemainder !== undefined ? ans.userRemainder : 'ー'}
+                      </span>
+                    )}
+                  </span>
                 </div>
                 <div className="text-4xl">
                   {ans.isCorrect ? (
