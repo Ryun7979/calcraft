@@ -29,7 +29,10 @@ export const useGame = () => {
 
   useEffect(() => {
     if (gameState === 'playing' && feedback === null) {
-      inputRef.current?.focus();
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [gameState, currentIndex, feedback]);
 
@@ -51,6 +54,9 @@ export const useGame = () => {
     hintTimeoutRef.current = setTimeout(() => {
       setShowHint(false);
     }, 3000);
+
+    // ヒントボタンクリック後にフォーカスを戻す
+    inputRef.current?.focus();
   }, [currentIndex, feedback, questions, showHint]);
 
   const startGame = useCallback(() => {
@@ -62,6 +68,11 @@ export const useGame = () => {
     setInputValue('');
     setFeedback(null);
     setGameState('playing');
+    
+    // ゲーム開始直後にフォーカス
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   }, [selectedGrade, selectedOp]);
 
   const handleAnswer = useCallback((skipped: boolean = false) => {

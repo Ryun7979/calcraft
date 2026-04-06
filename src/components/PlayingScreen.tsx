@@ -34,6 +34,21 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
   handleHint,
   handleAnswer,
 }) => {
+  React.useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // 正解・不正解のフィードバック中は入力を受け付けない
+      if (feedback !== null) return;
+      
+      // 数字キー (0-9) が押されたが、入力ボックスにフォーカスがない場合にフォーカスを移す
+      if (/^[0-9]$/.test(e.key) && document.activeElement !== inputRef.current) {
+        inputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [inputRef, feedback]);
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inputValue.trim() !== '') {
       handleAnswer();
