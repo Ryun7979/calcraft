@@ -4,7 +4,7 @@ import { X, Play, RotateCcw, Home, Info } from 'lucide-react';
 import { cn } from './lib/utils';
 import { playClickSound, playCorrectSound, playIncorrectSound } from './lib/audio';
 
-type Grade = 1 | 2 | 3 | 4 | 5 | 6;
+type Grade = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
 type Operation = 'add' | 'sub' | 'mul' | 'div';
 type GameState = 'menu' | 'playing' | 'result';
 
@@ -35,12 +35,16 @@ const OP_NAMES: Record<Operation, string> = {
 };
 
 const GRADE_OPERATIONS: Record<Grade, Operation[]> = {
-  1: ['add', 'sub'],
-  2: ['add', 'sub', 'mul'],
+  1: ['add', 'sub', 'mul', 'div'],
+  2: ['add', 'sub', 'mul', 'div'],
   3: ['add', 'sub', 'mul', 'div'],
   4: ['add', 'sub', 'mul', 'div'],
   5: ['add', 'sub', 'mul', 'div'],
   6: ['add', 'sub', 'mul', 'div'],
+  7: ['add', 'sub', 'mul', 'div'],
+  8: ['add', 'sub', 'mul', 'div'],
+  9: ['add', 'sub', 'mul', 'div'],
+  10: ['add', 'sub', 'mul', 'div'],
 };
 
 const TOTAL_QUESTIONS = 4;
@@ -64,33 +68,165 @@ const generateQuestion = (grade: Grade, op: Operation): Question => {
 
   switch (op) {
     case 'add':
-      if (grade === 1) { num1 = random(1, 9); num2 = random(1, 9); }
-      else if (grade === 2) { 
-        num1 = Math.random() < 0.5 ? getNiceNumber(10, 99) : random(10, 99);
-        num2 = Math.random() < 0.5 ? getNiceNumber(10, 99) : random(10, 99);
+      if (grade === 1) { // 1桁＋1桁（和が10以下）
+        num1 = random(1, 9);
+        num2 = random(1, 10 - num1);
+      } else if (grade === 2) { // 1桁＋1桁（繰り上がりあり）
+        num1 = random(2, 9);
+        num2 = random(11 - num1, 9);
+      } else if (grade === 3) { // 2桁＋1桁（繰り上がりなし）
+        num1 = random(10, 89);
+        num2 = random(1, 9 - (num1 % 10));
+      } else if (grade === 4) { // 2桁＋1桁（繰り上がりあり）
+        num1 = random(11, 89);
+        num2 = random(10 - (num1 % 10), 9);
+      } else if (grade === 5) { // 2桁＋2桁（10の倍数）
+        num1 = getNiceNumber(10, 80);
+        num2 = getNiceNumber(10, 90 - num1);
+      } else if (grade === 6) { // 2桁＋2桁（ゾロ目）
+        const d1 = random(1, 4);
+        const d2 = random(1, 9 - d1);
+        num1 = d1 * 11;
+        num2 = d2 * 11;
+      } else if (grade === 7) { // 2桁＋2桁（全桁繰り上がりなし）
+        const n1_1 = random(1, 8);
+        const n1_0 = random(0, 8);
+        const n2_1 = random(1, 9 - n1_1);
+        const n2_0 = random(1, 9 - n1_0);
+        num1 = n1_1 * 10 + n1_0;
+        num2 = n2_1 * 10 + n2_0;
+      } else if (grade === 8) { // 2桁＋2桁（ランダム）
+        num1 = random(11, 89);
+        num2 = random(11, 99 - num1);
+      } else if (grade === 9) { // 3桁＋2桁（一方がキリの良い数）
+        num1 = Math.random() < 0.5 ? getNiceNumber(100, 900, 100) : random(100, 999);
+        num2 = num1 >= 1000 ? random(10, 99) : (num1 % 100 === 0 ? random(10, 99) : getNiceNumber(10, 90));
+      } else { // 3桁＋3桁
+        num1 = random(100, 999);
+        num2 = random(100, 999);
       }
-      else if (grade === 3) { num1 = random(100, 999); num2 = random(100, 999); }
-      else { num1 = getNiceNumber(1000, 9999, 100); num2 = getNiceNumber(1000, 9999, 100); }
       answer = num1 + num2;
       break;
+
     case 'sub':
-      if (grade === 1) { num1 = random(10, 18); num2 = random(1, 9); }
-      else if (grade === 2) { num1 = random(20, 99); num2 = random(10, num1); }
-      else if (grade === 3) { num1 = random(100, 999); num2 = random(10, num1); }
-      else { num1 = getNiceNumber(1000, 9999, 100); num2 = getNiceNumber(100, num1, 100); }
+      if (grade === 1) { // 1桁－1桁（繰り下がりなし）
+        num1 = random(2, 9);
+        num2 = random(1, num1);
+      } else if (grade === 2) { // 10代－1桁（繰り下がりあり）
+        num2 = random(2, 9);
+        num1 = random(11, 9 + num2 - 1);
+        if (num1 >= 10 + num2) num1 = 10 + num2 - 1; // Ensure borrowing
+        // Re-adjust: num1 must be 11-18, num2 must be > num1 % 10
+        num1 = random(11, 18);
+        num2 = random((num1 % 10) + 1, 9);
+      } else if (grade === 3) { // 2桁－1桁（繰り下がりなし）
+        num1 = random(11, 99);
+        num2 = random(1, num1 % 10 || 1);
+      } else if (grade === 4) { // 2桁－1桁（繰り下がりあり）
+        num1 = random(21, 98);
+        num2 = random((num1 % 10) + 1, 9);
+      } else if (grade === 5) { // 2桁－2桁（10の倍数）
+        num1 = getNiceNumber(20, 90);
+        num2 = getNiceNumber(10, num1 - 10);
+      } else if (grade === 6) { // 2桁－2桁（ゾロ目）
+        num2 = random(1, 4) * 11;
+        num1 = random(num2 / 11 + 1, 9) * 11;
+      } else if (grade === 7) { // 2桁－2桁（繰り下がりなし）
+        const n1_1 = random(2, 9);
+        const n1_0 = random(1, 9);
+        const n2_1 = random(1, n1_1 - 1);
+        const n2_0 = random(1, n1_0);
+        num1 = n1_1 * 10 + n1_0;
+        num2 = n2_1 * 10 + n2_0;
+      } else if (grade === 8) { // 2桁－2桁（ランダム）
+        num1 = random(21, 99);
+        num2 = random(11, num1 - 1);
+      } else if (grade === 9) { // 3桁－2桁（一方がキリの良い数）
+        num1 = getNiceNumber(200, 900, 100);
+        num2 = random(11, 99);
+      } else { // 3桁－3桁
+        num1 = random(200, 999);
+        num2 = random(100, num1 - 1);
+      }
       answer = num1 - num2;
       break;
+
     case 'mul':
-      if (grade === 2) { num1 = random(1, 9); num2 = random(1, 9); } 
-      else if (grade === 3) { num1 = random(10, 99); num2 = random(2, 9); }
-      else if (grade === 4) { num1 = getNiceNumber(10, 99, 10); num2 = random(2, 9); }
-      else { num1 = random(100, 999); num2 = random(10, 99); }
+      if (grade <= 1) { // 九九（2, 3, 5の段）
+        const tables = [2, 3, 5];
+        num1 = tables[random(0, 2)];
+        num2 = random(1, 9);
+      } else if (grade <= 2) { // 九九（全ての段）
+        num1 = random(2, 9);
+        num2 = random(1, 9);
+      } else if (grade === 3) { // 10の倍数 × 1桁
+        num1 = getNiceNumber(10, 90);
+        num2 = random(2, 9);
+      } else if (grade === 4) { // 2桁 × 1桁（繰り上がりなし）
+        num1 = random(11, 44);
+        num2 = random(2, Math.floor(9 / Math.max(num1 % 10, 1)));
+        if (num1 * num2 > 99) num2 = 2; // Safety
+        // Better:
+        const n1_1 = random(1, 4);
+        const n1_0 = random(1, 4);
+        num1 = n1_1 * 10 + n1_0;
+        num2 = random(2, Math.min(Math.floor(9/n1_1), Math.floor(9/n1_0)));
+      } else if (grade === 5) { // 2桁 × 1桁（ランダム）
+        num1 = random(11, 99);
+        num2 = random(2, 9);
+      } else if (grade === 6) { // 3桁 × 1桁
+        num1 = random(101, 999);
+        num2 = random(2, 9);
+      } else if (grade === 7) { // 10の倍数 × 10の倍数
+        num1 = getNiceNumber(10, 90);
+        num2 = getNiceNumber(10, 90);
+      } else if (grade === 8) { // 2桁 × 2桁（ランダム）
+        num1 = random(11, 99);
+        num2 = random(11, 99);
+      } else if (grade === 9) { // 3桁 × 2桁
+        num1 = random(101, 999);
+        num2 = random(11, 99);
+      } else { // 3桁 × 3桁
+        num1 = random(101, 999);
+        num2 = random(101, 999);
+      }
       answer = num1 * num2;
       break;
+
     case 'div':
-      if (grade === 3) { num2 = random(2, 9); answer = random(2, 9); num1 = num2 * answer; }
-      else if (grade === 4) { num2 = random(2, 9); answer = random(10, 99); num1 = num2 * answer; }
-      else { num2 = random(10, 99); answer = random(10, 99); num1 = num2 * answer; }
+      if (grade <= 3) { // 九九の逆（答えが1桁）
+        num2 = random(2, 9);
+        answer = random(2, 9);
+        num1 = num2 * answer;
+      } else if (grade === 4) { // 2桁 ÷ 1桁（商が10以上）
+        num2 = random(2, 9);
+        answer = random(10, 20);
+        num1 = num2 * answer;
+      } else if (grade === 5) { // 3桁 ÷ 1桁（商が100以上、キリが良い数）
+        num2 = random(2, 9);
+        answer = getNiceNumber(100, 300, 10);
+        num1 = num2 * answer;
+      } else if (grade === 6) { // 3桁 ÷ 1桁（ランダム）
+        num2 = random(2, 9);
+        answer = random(11, 99);
+        num1 = num2 * answer;
+      } else if (grade === 7) { // 2桁 ÷ 10の倍数
+        num2 = getNiceNumber(10, 40);
+        answer = random(2, 9);
+        num1 = num2 * answer;
+      } else if (grade === 8) { // 3桁 ÷ 10の倍数
+        num2 = getNiceNumber(10, 90);
+        answer = getNiceNumber(10, 20);
+        num1 = num2 * answer;
+      } else if (grade === 9) { // 3桁 ÷ 2桁
+        num2 = random(11, 50);
+        answer = random(2, 19);
+        num1 = num2 * answer;
+      } else { // 4桁 ÷ 2桁
+        num2 = random(11, 99);
+        answer = random(11, 99);
+        num1 = num2 * answer;
+      }
       break;
   }
   return { num1, num2, op, answer };
@@ -203,24 +339,24 @@ export default function App() {
           <motion.div 
             key="menu"
             {...pageTransition}
-            className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 space-y-12 backdrop-brightness-50"
+            className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 space-y-16 backdrop-brightness-50"
           >
-            <div className="flex flex-col items-center space-y-2">
-              <h1 className="mc-title text-6xl md:text-8xl tracking-tight text-center">
+            <div className="flex flex-col items-center space-y-4">
+              <h1 className="mc-title text-7xl md:text-9xl tracking-tight text-center">
                 CALCRAFT
               </h1>
-              <span className="text-yellow-400 font-bold transform -rotate-12 bg-black/40 px-4 py-1 text-xl animate-pulse">
+              <span className="text-yellow-400 font-bold transform -rotate-12 bg-black/40 px-6 py-2 text-3xl animate-pulse">
                 算数であそぼう！
               </span>
             </div>
             
-            <div className="w-full max-w-4xl space-y-8">
-              <div className="mc-panel space-y-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-300 text-center flex items-center justify-center gap-3">
-                  難易度を選択
+            <div className="w-full max-w-5xl space-y-12">
+              <div className="mc-panel space-y-8">
+                <h2 className="text-2xl md:text-4xl font-bold text-gray-300 text-center flex items-center justify-center gap-3">
+                  レベルを選択
                 </h2>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
-                  {([1, 2, 3, 4, 5, 6] as Grade[]).map((g) => (
+                <div className="grid grid-cols-5 gap-4">
+                  {([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as Grade[]).map((g) => (
                     <button
                       key={g}
                       onClick={() => {
@@ -231,7 +367,7 @@ export default function App() {
                         }
                       }}
                       className={cn(
-                        "mc-button text-2xl h-16",
+                        "mc-button text-2xl h-20",
                         selectedGrade === g && "mc-button-green scale-105"
                       )}
                     >
@@ -241,9 +377,9 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="mc-panel space-y-6">
-                <h2 className="text-xl md:text-2xl font-bold text-gray-300 text-center">計算を選択</h2>
-                <div className="flex flex-wrap justify-center gap-4">
+              <div className="mc-panel space-y-8">
+                <h2 className="text-2xl md:text-4xl font-bold text-gray-300 text-center">計算を選択</h2>
+                <div className="flex flex-wrap justify-center gap-6">
                   {GRADE_OPERATIONS[selectedGrade].map((op) => (
                     <button
                       key={op}
@@ -252,7 +388,7 @@ export default function App() {
                         setSelectedOp(op);
                       }}
                       className={cn(
-                        "mc-button text-xl min-w-[140px] h-14",
+                        "mc-button text-3xl min-w-[200px] h-20",
                         selectedOp === op && "mc-button-blue scale-105"
                       )}
                     >
@@ -265,9 +401,9 @@ export default function App() {
 
             <button
               onClick={startGame}
-              className="mc-button mc-button-orange text-4xl w-full max-w-md h-24 mt-8 flex items-center gap-4"
+              className="mc-button mc-button-orange text-6xl w-full max-w-2xl h-40 mt-12 flex items-center gap-6"
             >
-              <Play fill="currentColor" className="w-10 h-10" />
+              <Play fill="currentColor" className="w-16 h-16" />
               あそぶ！
             </button>
           </motion.div>
