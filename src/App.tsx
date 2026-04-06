@@ -18,6 +18,7 @@ export default function App() {
     feedback,
     showHint,
     hintText,
+    levelChange,
     handleHint,
     startGame,
     handleAnswer,
@@ -46,6 +47,7 @@ export default function App() {
             feedback={feedback}
             showHint={showHint}
             hintText={hintText}
+            levelChange={levelChange}
             handleHint={handleHint}
             handleAnswer={handleAnswer}
           />

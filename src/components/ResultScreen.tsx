@@ -9,7 +9,7 @@ import { Panel } from './ui/Panel';
 
 interface ResultScreenProps {
   answers: AnsweredQuestion[];
-  startGame: () => void;
+  startGame: (isRetry?: boolean) => void;
   backToMenu: () => void;
 }
 
@@ -78,7 +78,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
         <div className="grid grid-cols-2 gap-4 h-20">
           <Button
             variant="green"
-            onClick={startGame}
+            onClick={() => startGame(true)}
             className="text-2xl flex items-center gap-3"
           >
             <RotateCcw className="w-6 h-6" />

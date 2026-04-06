@@ -9,6 +9,12 @@ export const useGame = () => {
   const [selectedGrade, setSelectedGrade] = useState<Grade>(1);
   const [selectedOp, setSelectedOp] = useState<Operation>('add');
   
+  // 連続成績トラッキング用
+  const [consecutiveFullMarks, setConsecutiveFullMarks] = useState(0);
+  const [consecutiveLowScore, setConsecutiveLowScore] = useState(0);
+  const [hasLeveledUp, setHasLeveledUp] = useState(false);
+  const [levelChange, setLevelChange] = useState<'up' | 'down' | null>(null);
+  
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<AnsweredQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -44,15 +50,65 @@ export const useGame = () => {
     }, 3000);
   }, [currentIndex, feedback, questions, showHint]);
 
-  const startGame = useCallback(() => {
+  const startGame = useCallback((isRetry = false) => {
     playClickSound();
-    const newQuestions = Array.from({ length: TOTAL_QUESTIONS }, () => generateQuestion(selectedGrade, selectedOp));
+    
+    let nextGrade = selectedGrade;
+    let change: 'up' | 'down' | null = null;
+
+    if (isRetry && answers.length === TOTAL_QUESTIONS) {
+      const correctCount = answers.filter(a => a.isCorrect).length;
+      const isFullMarks = correctCount === TOTAL_QUESTIONS;
+      const isLowScore = correctCount <= Math.floor(TOTAL_QUESTIONS / 2); // 50%以下
+
+      if (isFullMarks) {
+        const nextCount = consecutiveFullMarks + 1;
+        if (nextCount >= 2 && selectedGrade < 10) {
+          nextGrade = (selectedGrade + 1) as Grade;
+          change = 'up';
+          setConsecutiveFullMarks(0);
+          setHasLeveledUp(true);
+        } else {
+          setConsecutiveFullMarks(nextCount);
+        }
+        setConsecutiveLowScore(0);
+      } else if (isLowScore) {
+        const nextCount = consecutiveLowScore + 1;
+        // 一度でもレベルアップが発生した後の条件
+        if (nextCount >= 2 && selectedGrade > 1 && hasLeveledUp) {
+          nextGrade = (selectedGrade - 1) as Grade;
+          change = 'down';
+          setConsecutiveLowScore(0);
+        } else {
+          setConsecutiveLowScore(nextCount);
+        }
+        setConsecutiveFullMarks(0);
+      } else {
+        // 条件外ならリセット
+        setConsecutiveFullMarks(0);
+        setConsecutiveLowScore(0);
+      }
+    } else if (!isRetry) {
+      // メニューから開始、またはリトライ以外ではリセット
+      setConsecutiveFullMarks(0);
+      setConsecutiveLowScore(0);
+      setHasLeveledUp(false);
+    }
+
+    setSelectedGrade(nextGrade);
+    setLevelChange(change);
+    if (change) {
+      // 演出用。PlayingScreenで表示され終わる頃にリセット
+      setTimeout(() => setLevelChange(null), 3000);
+    }
+
+    const newQuestions = Array.from({ length: TOTAL_QUESTIONS }, () => generateQuestion(nextGrade, selectedOp));
     setQuestions(newQuestions);
     setAnswers([]);
     setCurrentIndex(0);
     setFeedback(null);
     setGameState('playing');
-  }, [selectedGrade, selectedOp]);
+  }, [selectedGrade, selectedOp, answers, consecutiveFullMarks, consecutiveLowScore, hasLeveledUp]);
 
   const handleAnswer = useCallback((value: string, remainderValue: string = '', skipped: boolean = false) => {
     if (feedback !== null) return;
@@ -112,6 +168,7 @@ export const useGame = () => {
     feedback,
     showHint,
     hintText,
+    levelChange,
     handleHint,
     startGame,
     handleAnswer,

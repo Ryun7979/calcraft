@@ -45,6 +45,19 @@ const HintDisplay = memo(({ showHint, hintText }: { showHint: boolean, hintText:
   </div>
 ));
 
+const LevelEffect = memo(({ type }: { type: 'up' | 'down' }) => (
+  <motion.div
+    initial={{ y: 50, opacity: 0, scale: 0.8 }}
+    animate={{ y: -120, opacity: [0, 1, 1, 0], scale: 1.5 }}
+    transition={{ duration: 2.5, times: [0, 0.2, 0.8, 1] }}
+    className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]"
+  >
+    <div className={`mc-title text-7xl md:text-9xl drop-shadow-[0_8px_0_rgba(0,0,0,0.8)] ${type === 'up' ? 'text-green-400' : 'text-yellow-300'}`}>
+      {type === 'up' ? 'LEVEL UP!' : 'LEVEL DOWN...'}
+    </div>
+  </motion.div>
+));
+
 interface AnswerInputProps {
   hasRemainder: boolean;
   disabled: boolean;
@@ -153,6 +166,7 @@ interface PlayingScreenProps {
   feedback: 'correct' | 'incorrect' | null;
   showHint: boolean;
   hintText: string;
+  levelChange: 'up' | 'down' | null;
   handleHint: () => void;
   handleAnswer: (val: string, remVal: string, skipped?: boolean) => void;
 }
@@ -165,6 +179,7 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
   feedback,
   showHint,
   hintText,
+  levelChange,
   handleHint,
   handleAnswer,
 }) => {
@@ -203,6 +218,12 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
 
               <HintDisplay showHint={showHint} hintText={hintText} />
             </motion.div>
+          </AnimatePresence>
+
+          <AnimatePresence>
+            {levelChange && (
+              <LevelEffect type={levelChange} />
+            )}
           </AnimatePresence>
         </div>
 
@@ -243,4 +264,3 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
     </motion.div>
   );
 };
-
