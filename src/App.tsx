@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Play, RotateCcw, Home } from 'lucide-react';
+import { X, Play, RotateCcw, Home, Info } from 'lucide-react';
 import { cn } from './lib/utils';
 import { playClickSound, playCorrectSound, playIncorrectSound } from './lib/audio';
 
@@ -46,17 +46,16 @@ const GRADE_OPERATIONS: Record<Grade, Operation[]> = {
 const TOTAL_QUESTIONS = 4;
 
 const pageTransition = {
-  initial: { opacity: 0, y: 10 },
-  animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -10 },
-  transition: { duration: 0.3, ease: "easeOut" }
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.2 }
 };
 
 const generateQuestion = (grade: Grade, op: Operation): Question => {
   let num1 = 0, num2 = 0, answer = 0;
   const random = (min: number, max: number) => Math.floor(Math.random() * (max - min + 1)) + min;
   
-  // 難易度調整用のヘルパー：切りの良い数字を生成
   const getNiceNumber = (min: number, max: number, factor: number = 10) => {
     const minFactor = Math.ceil(min / factor);
     const maxFactor = Math.floor(max / factor);
@@ -67,7 +66,6 @@ const generateQuestion = (grade: Grade, op: Operation): Question => {
     case 'add':
       if (grade === 1) { num1 = random(1, 9); num2 = random(1, 9); }
       else if (grade === 2) { 
-        // 2桁 + 2桁：50%で切りの良い数字
         num1 = Math.random() < 0.5 ? getNiceNumber(10, 99) : random(10, 99);
         num2 = Math.random() < 0.5 ? getNiceNumber(10, 99) : random(10, 99);
       }
@@ -83,14 +81,14 @@ const generateQuestion = (grade: Grade, op: Operation): Question => {
       answer = num1 - num2;
       break;
     case 'mul':
-      if (grade === 2) { num1 = random(1, 9); num2 = random(1, 9); } // 九九
-      else if (grade === 3) { num1 = random(10, 99); num2 = random(2, 9); } // 2桁×1桁
-      else if (grade === 4) { num1 = getNiceNumber(10, 99, 10); num2 = random(2, 9); } // 2桁(10の倍数)×1桁
+      if (grade === 2) { num1 = random(1, 9); num2 = random(1, 9); } 
+      else if (grade === 3) { num1 = random(10, 99); num2 = random(2, 9); }
+      else if (grade === 4) { num1 = getNiceNumber(10, 99, 10); num2 = random(2, 9); }
       else { num1 = random(100, 999); num2 = random(10, 99); }
       answer = num1 * num2;
       break;
     case 'div':
-      if (grade === 3) { num2 = random(2, 9); answer = random(2, 9); num1 = num2 * answer; } // 九九の逆
+      if (grade === 3) { num2 = random(2, 9); answer = random(2, 9); num1 = num2 * answer; }
       else if (grade === 4) { num2 = random(2, 9); answer = random(10, 99); num1 = num2 * answer; }
       else { num2 = random(10, 99); answer = random(10, 99); num1 = num2 * answer; }
       break;
@@ -126,14 +124,6 @@ export default function App() {
       inputRef.current?.focus();
     }
   }, [gameState, currentIndex, feedback]);
-
-  const getFontSizeClass = (num1: number, num2: number) => {
-    const totalDigits = num1.toString().length + num2.toString().length;
-    if (totalDigits <= 3) return "text-[4rem] sm:text-[6rem] md:text-[8rem] lg:text-[12rem]";
-    if (totalDigits <= 5) return "text-[3.5rem] sm:text-[5rem] md:text-[7rem] lg:text-[9rem]";
-    if (totalDigits <= 7) return "text-[2.5rem] sm:text-[4rem] md:text-[5rem] lg:text-[7rem]";
-    return "text-[2rem] sm:text-[3rem] md:text-[4rem] lg:text-[5rem]";
-  };
 
   const handleHint = () => {
     if (feedback !== null || showHint) return;
@@ -207,24 +197,29 @@ export default function App() {
   };
 
   return (
-    <div className="h-screen w-screen flex items-center justify-center p-2 md:p-4 overflow-hidden">
-      <div className="w-full h-full max-w-screen-2xl bg-white/90 backdrop-blur-md rounded-[2rem] shadow-2xl overflow-y-auto relative border-4 md:border-8 border-white flex flex-col">
-        
-        <AnimatePresence mode="wait">
+    <div className="h-screen w-screen flex items-center justify-center overflow-hidden bg-dirt select-none">
+      <AnimatePresence mode="wait">
         {gameState === 'menu' && (
           <motion.div 
             key="menu"
             {...pageTransition}
-            className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 space-y-8 md:space-y-12 min-h-max"
+            className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 space-y-12 backdrop-brightness-50"
           >
-            <h1 className="text-5xl md:text-7xl font-black text-green-500 drop-shadow-sm tracking-widest">
-              さんすうドリル
-            </h1>
+            <div className="flex flex-col items-center space-y-2">
+              <h1 className="mc-title text-6xl md:text-8xl tracking-tight text-center">
+                CALCRAFT
+              </h1>
+              <span className="text-yellow-400 font-bold transform -rotate-12 bg-black/40 px-4 py-1 text-xl animate-pulse">
+                算数であそぼう！
+              </span>
+            </div>
             
-            <div className="flex flex-col items-center space-y-8 md:space-y-10 w-full max-w-5xl">
-              <div className="w-full">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-500 mb-4 md:mb-6 text-center">むずかしさを選んでね</h2>
-                <div className="grid grid-cols-3 md:grid-cols-6 gap-3 md:gap-6">
+            <div className="w-full max-w-4xl space-y-8">
+              <div className="mc-panel space-y-6">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-300 text-center flex items-center justify-center gap-3">
+                  難易度を選択
+                </h2>
+                <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
                   {([1, 2, 3, 4, 5, 6] as Grade[]).map((g) => (
                     <button
                       key={g}
@@ -236,10 +231,8 @@ export default function App() {
                         }
                       }}
                       className={cn(
-                        "py-3 md:py-6 rounded-xl md:rounded-2xl font-bold text-2xl md:text-3xl transition-all",
-                        selectedGrade === g 
-                          ? "bg-green-500 text-white shadow-lg scale-105" 
-                          : "bg-gray-100 text-gray-600 hover:bg-green-100"
+                        "mc-button text-2xl h-16",
+                        selectedGrade === g && "mc-button-green scale-105"
                       )}
                     >
                       Lv {g}
@@ -248,9 +241,9 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="w-full">
-                <h2 className="text-2xl md:text-3xl font-bold text-gray-500 mb-4 md:mb-6 text-center">けいさんをえらんでね</h2>
-                <div className="flex flex-wrap justify-center gap-3 md:gap-6">
+              <div className="mc-panel space-y-6">
+                <h2 className="text-xl md:text-2xl font-bold text-gray-300 text-center">計算を選択</h2>
+                <div className="flex flex-wrap justify-center gap-4">
                   {GRADE_OPERATIONS[selectedGrade].map((op) => (
                     <button
                       key={op}
@@ -259,10 +252,8 @@ export default function App() {
                         setSelectedOp(op);
                       }}
                       className={cn(
-                        "px-6 md:px-10 py-3 md:py-6 rounded-xl md:rounded-2xl font-bold text-2xl md:text-3xl transition-all min-w-[120px] md:min-w-[160px]",
-                        selectedOp === op 
-                          ? "bg-blue-500 text-white shadow-lg scale-105" 
-                          : "bg-gray-100 text-gray-600 hover:bg-blue-100"
+                        "mc-button text-xl min-w-[140px] h-14",
+                        selectedOp === op && "mc-button-blue scale-105"
                       )}
                     >
                       {OP_NAMES[op]}
@@ -274,109 +265,98 @@ export default function App() {
 
             <button
               onClick={startGame}
-              className="mt-6 md:mt-12 px-10 md:px-20 py-5 md:py-8 bg-orange-500 hover:bg-orange-600 text-white rounded-full font-black text-3xl md:text-5xl shadow-xl hover:scale-105 transition-all flex items-center gap-3 md:gap-6 shrink-0"
+              className="mc-button mc-button-orange text-4xl w-full max-w-md h-24 mt-8 flex items-center gap-4"
             >
-              <Play fill="currentColor" className="w-10 h-10 md:w-14 md:h-14" />
-              スタート！
+              <Play fill="currentColor" className="w-10 h-10" />
+              あそぶ！
             </button>
           </motion.div>
         )}
 
-        {gameState === 'playing' && questions.length > 0 && (
+        {gameState === 'playing' && (
           <motion.div 
             key="playing"
             {...pageTransition}
-            className="flex-1 flex flex-col p-4 md:p-8 lg:p-12 min-h-0"
+            className="w-full h-full flex flex-col items-center justify-center p-4 bg-stone/60"
           >
-            <div className="flex justify-between items-center mb-4 md:mb-8 shrink-0">
-              <div className="text-xl md:text-3xl lg:text-4xl font-bold text-gray-500 bg-gray-100 px-4 md:px-8 lg:px-10 py-2 md:py-3 lg:py-4 rounded-full shadow-inner">
-                第 {currentIndex + 1} 問 / {TOTAL_QUESTIONS}
+            <div className="w-full max-w-5xl h-full flex flex-col items-center justify-between py-12">
+              <div className="w-full flex justify-between items-center px-4">
+                <div className="mc-panel py-2 px-6 bg-black/60">
+                  <span className="text-xl md:text-2xl font-bold text-white">第 {currentIndex + 1} 問 / {TOTAL_QUESTIONS}</span>
+                </div>
+                <div className="mc-panel py-2 px-6 bg-black/60">
+                  <span className="text-lg md:text-xl font-bold text-blue-300">Lv {selectedGrade} {OP_NAMES[selectedOp]}</span>
+                </div>
               </div>
-              <div className="text-lg md:text-2xl lg:text-3xl font-bold text-blue-500 bg-blue-50 px-4 md:px-8 lg:px-10 py-2 md:py-3 lg:py-4 rounded-full border-2 border-blue-100">
-                Lv {selectedGrade} の {OP_NAMES[selectedOp]}
-              </div>
-            </div>
 
-            <div className="flex-1 flex flex-col items-center justify-between relative min-h-0">
-              <div className="flex-1 flex items-center justify-center min-h-0 w-full px-2">
+              <div className="flex-1 flex flex-col items-center justify-center w-full relative">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentIndex}
-                    initial={{ opacity: 0, scale: 0.8, x: 0 }}
-                    animate={
-                      feedback === 'incorrect'
-                        ? { opacity: 1, scale: 1, x: [-10, 10, -10, 10, 0] }
-                        : { opacity: 1, scale: 1, x: 0 }
-                    }
-                    exit={{ opacity: 0, scale: 1.2, x: 0 }}
-                    transition={
-                      feedback === 'incorrect'
-                        ? { duration: 0.4 }
-                        : { duration: 0.3 }
-                    }
-                    className={cn(
-                      "font-black text-gray-800 tracking-wider flex items-center justify-center gap-2 sm:gap-4 md:gap-8 lg:gap-12 w-full whitespace-nowrap",
-                      getFontSizeClass(questions[currentIndex].num1, questions[currentIndex].num2)
-                    )}
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 1.1, opacity: 0 }}
+                    className="flex flex-col items-center gap-12"
                   >
-                    <span>{questions[currentIndex].num1}</span>
-                    <span className="text-blue-500">{OP_SYMBOLS[questions[currentIndex].op]}</span>
-                    <span>{questions[currentIndex].num2}</span>
-                    <span className="text-gray-400">=</span>
+                    <div className="flex items-center gap-8 md:gap-16 text-8xl md:text-9xl font-black mc-title drop-shadow-[0_8px_0_rgba(0,0,0,0.5)]">
+                      <span>{questions[currentIndex].num1}</span>
+                      <span className="text-yellow-400">{OP_SYMBOLS[questions[currentIndex].op]}</span>
+                      <span>{questions[currentIndex].num2}</span>
+                    </div>
+                    
+                    <div className="relative w-full max-w-lg mt-8">
+                       <input
+                        ref={inputRef}
+                        type="number"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        disabled={feedback !== null}
+                        className="w-full bg-[#1e1e1e] border-4 border-[#373737] px-8 py-6 text-6xl md:text-7xl font-bold text-center text-white focus:outline-none focus:border-green-500 shadow-[inset_4px_4px_0_rgba(0,0,0,0.8)]"
+                        placeholder="?"
+                      />
+                      <AnimatePresence>
+                        {showHint && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="absolute -top-28 left-0 right-0 text-center z-20"
+                          >
+                            <span className="mc-hint text-3xl border-black inline-block whitespace-nowrap">
+                              HINT: {hintText}
+                            </span>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </div>
                   </motion.div>
                 </AnimatePresence>
               </div>
 
-              <div className="flex flex-col items-center gap-4 md:gap-6 lg:gap-10 z-10 shrink-0 mt-4">
-                <div className="h-8 md:h-12 flex items-center justify-center -mb-2 md:-mb-4">
-                  <AnimatePresence>
-                    {showHint && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                        className="text-yellow-700 font-bold text-sm md:text-lg lg:text-xl bg-yellow-100 px-4 md:px-6 py-1 md:py-2 rounded-full shadow-sm border-2 border-yellow-300"
-                      >
-                        💡 {hintText}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-                <input
-                  ref={inputRef}
-                  type="number"
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  disabled={feedback !== null}
-                  className="w-48 sm:w-56 md:w-80 lg:w-96 text-center text-4xl md:text-5xl lg:text-7xl font-bold py-2 md:py-4 lg:py-6 rounded-xl lg:rounded-3xl border-4 border-gray-200 focus:border-green-500 focus:outline-none shadow-inner transition-colors bg-white"
-                  placeholder="こたえ"
-                />
-                
-                <div className="flex items-center gap-3 md:gap-6 lg:gap-8">
+              <div className="flex items-center gap-6 w-full max-w-3xl">
+                <button
+                  onClick={() => handleAnswer(false)}
+                  disabled={inputValue.trim() === '' || feedback !== null}
+                  className="mc-button mc-button-green text-4xl h-32 flex-1"
+                >
+                  こたえる
+                </button>
+                <div className="flex flex-col gap-2">
                   <button
-                    onClick={() => handleAnswer(false)}
-                    disabled={inputValue.trim() === '' || feedback !== null}
-                    className="px-8 md:px-12 lg:px-20 py-4 md:py-6 lg:py-8 bg-green-500 disabled:bg-gray-300 text-white rounded-2xl lg:rounded-3xl font-bold text-2xl md:text-3xl lg:text-5xl shadow-lg hover:bg-green-600 transition-all active:scale-95"
+                    onClick={handleHint}
+                    disabled={feedback !== null || showHint}
+                    className="mc-button h-16 text-xl w-48"
                   >
-                    こたえる
+                    ヒント
                   </button>
-                  <div className="flex flex-col gap-2 md:gap-3">
-                    <button
-                      onClick={handleHint}
-                      disabled={feedback !== null || showHint}
-                      className="px-4 md:px-6 lg:px-8 py-2 md:py-3 lg:py-4 bg-yellow-400 disabled:bg-yellow-200 text-yellow-900 disabled:text-yellow-600 rounded-xl lg:rounded-2xl font-bold text-sm md:text-base lg:text-xl shadow-md hover:bg-yellow-500 transition-all active:scale-95"
-                    >
-                      ヒント
-                    </button>
-                    <button
-                      onClick={() => handleAnswer(true)}
-                      disabled={feedback !== null}
-                      className="px-4 md:px-6 lg:px-8 py-2 md:py-3 lg:py-4 bg-gray-200 text-gray-600 rounded-xl lg:rounded-2xl font-bold text-sm md:text-base lg:text-xl shadow-md hover:bg-gray-300 transition-all active:scale-95"
-                    >
-                      わかりません
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => handleAnswer(true)}
+                    disabled={feedback !== null}
+                    className="mc-button h-16 text-xl w-48"
+                  >
+                    パス
+                  </button>
                 </div>
               </div>
 
@@ -386,15 +366,12 @@ export default function App() {
                     initial={{ scale: 0, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: "spring", bounce: 0.6, duration: 0.6 }}
-                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-20"
+                    className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
                   >
                     {feedback === 'correct' ? (
-                      <svg className="text-red-500 w-72 h-72 md:w-[40rem] md:h-[40rem] drop-shadow-2xl opacity-90" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="8" />
-                      </svg>
+                      <div className="text-[20rem] text-green-500 drop-shadow-2xl">○</div>
                     ) : (
-                      <X className="text-blue-500 w-72 h-72 md:w-[40rem] md:h-[40rem] drop-shadow-2xl opacity-90" strokeWidth={4} />
+                      <div className="text-[20rem] text-red-500 drop-shadow-2xl">×</div>
                     )}
                   </motion.div>
                 )}
@@ -407,72 +384,70 @@ export default function App() {
           <motion.div 
             key="result"
             {...pageTransition}
-            className="flex-1 flex flex-col p-6 md:p-12 min-h-0"
+            className="w-full h-full flex flex-col items-center justify-center p-6 bg-stone"
           >
-            <div className="text-center mb-6 md:mb-10 shrink-0">
-              <h2 className="text-4xl md:text-6xl font-black text-gray-800 mb-4 md:mb-6">けっかひょう</h2>
-              <div className="text-3xl md:text-5xl font-bold text-orange-500 bg-orange-50 inline-block px-10 md:px-16 py-3 md:py-6 rounded-full border-4 border-orange-100">
-                {TOTAL_QUESTIONS}問中 <span className="text-5xl md:text-7xl text-orange-600 mx-2">{answers.filter(a => a.isCorrect).length}</span> 問せいかい！
+            <div className="mc-panel w-full max-w-4xl max-h-[90vh] flex flex-col bg-stone p-8 border-8">
+              <div className="text-center mb-12">
+                <h2 className="mc-title text-4xl md:text-5xl mb-4 text-yellow-400">けっか発表！</h2>
+                <div className="mc-panel inline-block px-12 py-4 bg-black/40 border-black mt-4">
+                  <span className="text-3xl font-bold">
+                    {TOTAL_QUESTIONS}問中 <span className="text-5xl text-yellow-400 mx-2">{answers.filter(a => a.isCorrect).length}</span> 問正解！
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <div className="flex-1 overflow-y-auto bg-gray-50 rounded-2xl md:rounded-3xl p-6 md:p-8 border-4 border-gray-100 shadow-inner mb-6 md:mb-10 min-h-[150px]">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+              <div className="flex-1 overflow-y-auto space-y-4 mb-8 pr-2">
                 {answers.map((ans, i) => (
                   <div key={i} className={cn(
-                    "flex items-center justify-between p-6 md:p-8 rounded-xl md:rounded-2xl border-4",
-                    ans.isCorrect ? "bg-red-50 border-red-100" : "bg-blue-50 border-blue-100"
+                    "mc-panel p-6 flex items-center justify-between border-4",
+                    ans.isCorrect ? "border-green-500 bg-green-900/20" : "border-red-500 bg-red-900/20"
                   )}>
-                    <div className="flex items-center gap-4 md:gap-8">
-                      <div className="text-2xl md:text-3xl font-bold text-gray-400 w-10 md:w-12">Q{i + 1}</div>
-                      <div className="text-2xl md:text-4xl font-bold text-gray-700 tracking-wider">
+                    <div className="flex items-center gap-6">
+                      <span className="text-gray-400 font-bold text-xl">Q{i + 1}</span>
+                      <span className="text-3xl font-bold tracking-widest text-white">
                         {ans.num1} {OP_SYMBOLS[ans.op]} {ans.num2} = {ans.answer}
-                      </div>
+                      </span>
                     </div>
-                    <div className="flex items-center gap-4 md:gap-8">
-                      <div className="text-xl md:text-2xl font-bold text-gray-500 hidden sm:block">
-                        あなたのこたえ: {ans.userAnswer !== null ? ans.userAnswer : 'ー'}
+                    <div className="flex items-center gap-8">
+                      <div className="text-right">
+                        <span className="block text-xs text-gray-400 mb-1">あなたのこたえ</span>
+                        <span className="text-2xl font-bold">{ans.userAnswer !== null ? ans.userAnswer : 'ー'}</span>
                       </div>
-                      <div className="text-xl md:text-2xl font-bold text-gray-500 sm:hidden">
-                        {ans.userAnswer !== null ? ans.userAnswer : 'ー'}
+                      <div className="text-4xl">
+                        {ans.isCorrect ? (
+                          <span className="text-green-500">○</span>
+                        ) : (
+                          <span className="text-red-500">×</span>
+                        )}
                       </div>
-                      {ans.isCorrect ? (
-                        <svg className="text-red-500 w-8 h-8 md:w-10 md:h-10 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round">
-                          <circle cx="12" cy="12" r="8" />
-                        </svg>
-                      ) : (
-                        <X className="text-blue-500 w-8 h-8 md:w-10 md:h-10 shrink-0" strokeWidth={6} />
-                      )}
                     </div>
                   </div>
                 ))}
               </div>
-            </div>
 
-            <div className="flex justify-center gap-6 md:gap-10 shrink-0">
-              <button
-                onClick={startGame}
-                className="px-8 md:px-12 py-4 md:py-6 bg-green-500 hover:bg-green-600 text-white rounded-full font-bold text-2xl md:text-3xl shadow-lg hover:scale-105 transition-all flex items-center gap-3 md:gap-4"
-              >
-                <RotateCcw className="w-8 h-8 md:w-10 md:h-10" />
-                もういちど
-              </button>
-              <button
-                onClick={() => {
-                  playClickSound();
-                  setGameState('menu');
-                }}
-                className="px-8 md:px-12 py-4 md:py-6 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-bold text-2xl md:text-3xl shadow-lg hover:scale-105 transition-all flex items-center gap-3 md:gap-4"
-              >
-                <Home className="w-8 h-8 md:w-10 md:h-10" />
-                メニューへ
-              </button>
+              <div className="grid grid-cols-2 gap-4 h-20">
+                <button
+                  onClick={startGame}
+                  className="mc-button mc-button-green text-2xl flex items-center gap-3"
+                >
+                  <RotateCcw className="w-6 h-6" />
+                  もういちど
+                </button>
+                <button
+                  onClick={() => {
+                    playClickSound();
+                    setGameState('menu');
+                  }}
+                  className="mc-button mc-button-blue text-2xl flex items-center gap-3"
+                >
+                  <Home className="w-6 h-6" />
+                  タイトル
+                </button>
+              </div>
             </div>
           </motion.div>
         )}
-        </AnimatePresence>
-
-      </div>
+      </AnimatePresence>
     </div>
   );
 }

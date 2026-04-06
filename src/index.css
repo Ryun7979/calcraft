@@ -1,13 +1,117 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "M PLUS Rounded 1c", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DotGothic16", "M PLUS Rounded 1c", ui-sans-serif, system-ui, sans-serif;
+  --font-pixel: "Press Start 2P", cursive;
+}
+
+:root {
+  --mc-gray: #c6c6c6;
+  --mc-dark-gray: #555555;
+  --mc-light-gray: #fbfbfb;
+  --mc-border-width: 4px;
 }
 
 body {
-  font-family: "M PLUS Rounded 1c", sans-serif;
-  background-color: #f0fdf4;
-  color: #334155;
-  background-image: radial-gradient(#bbf7d0 2px, transparent 2px);
-  background-size: 32px 32px;
+  font-family: "DotGothic16", sans-serif;
+  margin: 0;
+  background-color: #3e2723;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+/* Texture backgrounds */
+.bg-dirt {
+  background-image: url('./assets/dirt.png');
+  background-size: 256px;
+  image-rendering: pixelated;
+}
+
+.bg-stone {
+  background-image: url('./assets/stone.png');
+  background-size: 256px;
+  image-rendering: pixelated;
+}
+
+/* Minecraft Button Style */
+.mc-button {
+  position: relative;
+  background-color: var(--mc-gray);
+  border: var(--mc-border-width) solid #000;
+  box-shadow: inset 2px 2px 0px var(--mc-light-gray),
+              inset -2px -2px 0px var(--mc-dark-gray);
+  color: #3f3f3f;
+  font-family: "DotGothic16", sans-serif;
+  text-shadow: 2px 2px 0px rgba(0, 0, 0, 0.2);
+  transition: all 0.1s;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+}
+
+.mc-button:hover {
+  background-color: #7a7a7a;
+  color: #ffff55;
+  box-shadow: inset 2px 2px 0px #aeaeae,
+              inset -2px -2px 0px #313131;
+}
+
+.mc-button:active {
+  box-shadow: inset 2px 2px 0px var(--mc-dark-gray),
+              inset -2px -2px 0px var(--mc-light-gray);
+  transform: translateY(2px);
+}
+
+.mc-button-blue {
+  background-color: #3f51b5;
+  box-shadow: inset 2px 2px 0px #7986cb,
+              inset -2px -2px 0px #1a237e;
+  color: #ffffff;
+}
+
+.mc-button-green {
+  background-color: #4caf50;
+  box-shadow: inset 2px 2px 0px #81c784,
+              inset -2px -2px 0px #1b5e20;
+  color: #ffffff;
+}
+
+.mc-button-orange {
+  background-color: #ff9800;
+  box-shadow: inset 2px 2px 0px #ffb74d,
+              inset -2px -2px 0px #e65100;
+  color: #ffffff;
+}
+
+/* Panel Styles */
+.mc-panel {
+  background-color: rgba(0, 0, 0, 0.7);
+  border: 4px solid #373737;
+  box-shadow: inset 4px 4px 0px #212121;
+  padding: 20px;
+}
+
+.mc-hint {
+  background-color: #ffff55;
+  border: 4px solid #000;
+  box-shadow: inset 4px 4px 0px #ffffff,
+              inset -4px -4px 0px #aba21e;
+  color: #3f3f3f;
+  padding: 16px 32px;
+  font-weight: bold;
+}
+
+.mc-title {
+  font-family: "Press Start 2P", cursive;
+  color: #ffffff;
+  text-shadow: 4px 4px 0px #3f3f3f;
+  letter-spacing: 2px;
+}
+
+/* Custom classes for the game */
+.pixel-border {
+  border: 4px solid #000;
+  image-rendering: pixelated;
 }
