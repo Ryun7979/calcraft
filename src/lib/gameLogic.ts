@@ -168,7 +168,11 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
       
       const realAnswer = Math.floor(num1 / num2);
       const realRemainder = num1 % num2;
-      return { num1, num2, op, answer: realAnswer, remainder: realRemainder };
+      return { 
+        num1, num2, op, 
+        answer: realAnswer, 
+        remainder: grade >= 4 ? realRemainder : undefined 
+      };
     }
 
     case 'remix': {
