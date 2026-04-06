@@ -1,5 +1,5 @@
 export type Grade = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
-export type Operation = 'add' | 'sub' | 'mul' | 'div';
+export type Operation = 'add' | 'sub' | 'mul' | 'div' | 'remix';
 export type GameState = 'menu' | 'playing' | 'result';
 
 export interface Question {

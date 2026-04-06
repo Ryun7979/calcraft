@@ -77,7 +77,7 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
                   playClickSound();
                   setSelectedOp(op);
                 }}
-                className={cn("text-2xl min-w-[180px] h-16", selectedOp === op && "scale-105")}
+                className={cn("text-2xl min-w-[140px] h-16", selectedOp === op && "scale-105")}
               >
                 {OP_NAMES[op]}
               </Button>

@@ -56,4 +56,16 @@ export const DIFFICULTY_INFO: DifficultyMapping = {
     9: { tendency: '3桁÷2桁（あまりあり）', grade: '小4' },
     10: { tendency: '4桁÷2桁（あまりあり）', grade: '小5' },
   },
+  remix: {
+    1: { tendency: 'たしざん・ひきざん（10まで）', grade: '小1' },
+    2: { tendency: 'たしざん・ひきざん（くり上がり・下がりあり）', grade: '小1〜2' },
+    3: { tendency: '3桁までの加減、かけ算（九九）の基本', grade: '小2' },
+    4: { tendency: '3桁までの加減、かけ算、わり算の基本', grade: '小3' },
+    5: { tendency: '大きな数の加減、かけ算、わり算（あまりあり）', grade: '小3〜4' },
+    6: { tendency: '4桁までの加減、3桁のかけ算、わり算の筆算', grade: '小4〜5' },
+    7: { tendency: '四則演算すべての総合（小5・6レベル）', grade: '小6' },
+    8: { tendency: '四則演算すべての総合（応用）', grade: '小学校全般' },
+    9: { tendency: '四則演算すべての総合（発展）', grade: '小学校全般' },
+    10: { tendency: '四則演算すべての総合（マスター）', grade: '小学校全般' },
+  },
 };

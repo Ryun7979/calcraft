@@ -5,6 +5,7 @@ export const OP_SYMBOLS: Record<Operation, string> = {
   sub: '-',
   mul: '×',
   div: '÷',
+  remix: '？',
 };
 
 export const OP_NAMES: Record<Operation, string> = {
@@ -12,19 +13,20 @@ export const OP_NAMES: Record<Operation, string> = {
   sub: 'ひきざん',
   mul: 'かけざん',
   div: 'わりざん',
+  remix: 'リミックス',
 };
 
 export const GRADE_OPERATIONS: Record<Grade, Operation[]> = {
-  1: ['add', 'sub', 'mul', 'div'],
-  2: ['add', 'sub', 'mul', 'div'],
-  3: ['add', 'sub', 'mul', 'div'],
-  4: ['add', 'sub', 'mul', 'div'],
-  5: ['add', 'sub', 'mul', 'div'],
-  6: ['add', 'sub', 'mul', 'div'],
-  7: ['add', 'sub', 'mul', 'div'],
-  8: ['add', 'sub', 'mul', 'div'],
-  9: ['add', 'sub', 'mul', 'div'],
-  10: ['add', 'sub', 'mul', 'div'],
+  1: ['add', 'sub', 'mul', 'div', 'remix'],
+  2: ['add', 'sub', 'mul', 'div', 'remix'],
+  3: ['add', 'sub', 'mul', 'div', 'remix'],
+  4: ['add', 'sub', 'mul', 'div', 'remix'],
+  5: ['add', 'sub', 'mul', 'div', 'remix'],
+  6: ['add', 'sub', 'mul', 'div', 'remix'],
+  7: ['add', 'sub', 'mul', 'div', 'remix'],
+  8: ['add', 'sub', 'mul', 'div', 'remix'],
+  9: ['add', 'sub', 'mul', 'div', 'remix'],
+  10: ['add', 'sub', 'mul', 'div', 'remix'],
 };
 
 export const TOTAL_QUESTIONS = 4;

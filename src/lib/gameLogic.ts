@@ -170,6 +170,28 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
       const realRemainder = num1 % num2;
       return { num1, num2, op, answer: realAnswer, remainder: realRemainder };
     }
+
+    case 'remix': {
+      const remixConfigs: Record<number, { ops: Operation[], subGrades: Record<string, number[]> }> = {
+        1: { ops: ['add', 'sub'], subGrades: { add: [1], sub: [1] } },
+        2: { ops: ['add', 'sub'], subGrades: { add: [1, 2], sub: [1, 2] } },
+        3: { ops: ['add', 'sub', 'mul'], subGrades: { add: [3, 4], sub: [3, 4], mul: [1, 2] } },
+        4: { ops: ['add', 'sub', 'mul', 'div'], subGrades: { add: [5, 6], sub: [5, 6], mul: [3, 4], div: [1, 2] } },
+        5: { ops: ['add', 'sub', 'mul', 'div'], subGrades: { add: [7, 8], sub: [7, 8], mul: [5, 6], div: [3, 4] } },
+        6: { ops: ['add', 'sub', 'mul', 'div'], subGrades: { add: [9, 10], sub: [9, 10], mul: [7, 8], div: [5, 6] } },
+        7: { ops: ['add', 'sub', 'mul', 'div'], subGrades: { add: [10], sub: [10], mul: [9, 10], div: [7, 8] } },
+        8: { ops: ['add', 'sub', 'mul', 'div'], subGrades: { add: [10], sub: [10], mul: [10], div: [9] } },
+        9: { ops: ['add', 'sub', 'mul', 'div'], subGrades: { add: [10], sub: [10], mul: [10], div: [10] } },
+        10: { ops: ['add', 'sub', 'mul', 'div'], subGrades: { add: [10], sub: [10], mul: [10], div: [10] } },
+      };
+
+      const config = remixConfigs[grade as number] || remixConfigs[1];
+      const pickedOp = config.ops[random(0, config.ops.length - 1)];
+      const possibleSubGrades = config.subGrades[pickedOp];
+      const pickedSubGrade = possibleSubGrades[random(0, possibleSubGrades.length - 1)];
+      
+      return generateQuestion(pickedSubGrade as Grade, pickedOp);
+    }
   }
   return { num1, num2, op, answer };
 };
