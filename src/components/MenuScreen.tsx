@@ -27,26 +27,26 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
   const info = DIFFICULTY_INFO[selectedOp][selectedGrade];
 
   return (
-    <motion.div 
+    <motion.div
       key="menu"
       {...pageTransition}
-      className="w-full h-full flex flex-col items-center justify-center p-4 md:p-8 space-y-12 backdrop-brightness-50"
+      className="w-full h-full flex flex-col items-center justify-center p-3 md:p-5 space-y-4 backdrop-brightness-50"
     >
-      <div className="flex flex-col items-center space-y-4">
-        <h1 className="mc-title text-7xl md:text-9xl tracking-tight text-center">
+      <div className="flex flex-col items-center space-y-2">
+        <h1 className="mc-title text-4xl md:text-6xl tracking-tight text-center">
           CALCRAFT
         </h1>
-        <span className="text-yellow-400 font-bold transform -rotate-12 bg-black/40 px-6 py-2 text-3xl animate-pulse">
+        <span className="text-yellow-400 font-bold transform -rotate-12 bg-black/40 px-4 py-1 text-lg animate-pulse">
           算数であそぼう！
         </span>
       </div>
-      
-      <div className="w-full max-w-5xl space-y-8">
-        <Panel className="space-y-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-300 text-center flex items-center justify-center gap-3">
+
+      <div className="w-full max-w-4xl space-y-3">
+        <Panel className="space-y-3">
+          <h2 className="text-lg md:text-xl font-bold text-gray-300 text-center flex items-center justify-center gap-3">
             レベルを選択
           </h2>
-          <div className="grid grid-cols-5 gap-4">
+          <div className="grid grid-cols-5 gap-2">
             {([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as Grade[]).map((g) => (
               <Button
                 key={g}
@@ -58,7 +58,7 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
                     setSelectedOp(GRADE_OPERATIONS[g][0]);
                   }
                 }}
-                className={cn("text-2xl h-16", selectedGrade === g && "scale-105")}
+                className={cn("text-base h-10", selectedGrade === g && "scale-105")}
               >
                 Lv {g}
               </Button>
@@ -66,9 +66,9 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
           </div>
         </Panel>
 
-        <Panel className="space-y-6">
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-300 text-center">計算を選択</h2>
-          <div className="flex flex-wrap justify-center gap-6">
+        <Panel className="space-y-3">
+          <h2 className="text-lg md:text-xl font-bold text-gray-300 text-center">計算を選択</h2>
+          <div className="flex flex-wrap justify-center gap-3">
             {GRADE_OPERATIONS[selectedGrade].map((op) => (
               <Button
                 key={op}
@@ -77,7 +77,7 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
                   playClickSound();
                   setSelectedOp(op);
                 }}
-                className={cn("text-2xl min-w-[140px] h-16", selectedOp === op && "scale-105")}
+                className={cn("text-base min-w-[110px] h-10", selectedOp === op && "scale-105")}
               >
                 {OP_NAMES[op]}
               </Button>
@@ -85,14 +85,14 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
           </div>
         </Panel>
 
-        <Panel className="border-2 border-yellow-500/30 bg-black/60 py-6">
-          <div className="flex flex-col items-center gap-3">
-            <div className="flex items-center gap-4 text-gray-400 text-lg">
-              <span className="bg-yellow-500/20 text-yellow-400 px-3 py-1 border border-yellow-500/30 font-bold">出題傾向</span>
+        <Panel className="border-2 border-yellow-500/30 bg-black/60 py-3">
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3 text-gray-400 text-sm">
+              <span className="bg-yellow-500/20 text-yellow-400 px-2 py-0.5 border border-yellow-500/30 font-bold">出題傾向</span>
               <span className="tracking-wide">{info.tendency}</span>
             </div>
-            <div className="text-3xl font-bold text-white flex items-center gap-4">
-              <span className="text-lg text-gray-400 font-normal">学習内容:</span>
+            <div className="text-xl font-bold text-white flex items-center gap-3">
+              <span className="text-sm text-gray-400 font-normal">学習内容:</span>
               <span className="text-green-400 tracking-wider">小学校 {info.grade.replace('小', '')}年生 相当</span>
             </div>
           </div>
@@ -102,9 +102,9 @@ export const MenuScreen: React.FC<MenuScreenProps> = ({
       <Button
         variant="orange"
         onClick={startGame}
-        className="text-6xl w-full max-w-2xl h-36 flex items-center gap-8 shadow-2xl"
+        className="text-3xl w-full max-w-xl h-14 flex items-center gap-4 shadow-2xl"
       >
-        <Play fill="currentColor" className="w-16 h-16" />
+        <Play fill="currentColor" className="w-8 h-8" />
         あそぶ！
       </Button>
     </motion.div>

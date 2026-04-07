@@ -9,17 +9,17 @@ import { Panel } from './ui/Panel';
 
 const StatsPanel = memo(({ currentIndex, selectedGrade, selectedOp }: { currentIndex: number, selectedGrade: Grade, selectedOp: Operation }) => (
   <div className="w-full flex justify-between items-center px-4">
-    <Panel className="py-2 px-6 bg-black/60">
-      <span className="text-xl md:text-2xl font-bold text-white">第 {currentIndex + 1} 問 / {TOTAL_QUESTIONS}</span>
+    <Panel className="py-1 px-4 bg-black/60">
+      <span className="text-sm md:text-base font-bold text-white">第 {currentIndex + 1} 問 / {TOTAL_QUESTIONS}</span>
     </Panel>
-    <Panel className="py-2 px-6 bg-black/60">
-      <span className="text-lg md:text-xl font-bold text-blue-300">Lv {selectedGrade} {OP_NAMES[selectedOp]}</span>
+    <Panel className="py-1 px-4 bg-black/60">
+      <span className="text-sm md:text-base font-bold text-blue-300">Lv {selectedGrade} {OP_NAMES[selectedOp]}</span>
     </Panel>
   </div>
 ));
 
 const QuestionDisplay = memo(({ num1, num2, op }: { num1: number, num2: number, op: Operation }) => (
-  <div className="flex items-center gap-8 md:gap-16 text-8xl md:text-9xl font-black mc-title drop-shadow-[0_8px_0_rgba(0,0,0,0.5)]">
+  <div className="flex items-center gap-6 md:gap-10 text-6xl md:text-7xl font-black mc-title drop-shadow-[0_8px_0_rgba(0,0,0,0.5)]">
     <span>{num1}</span>
     <span className="text-yellow-400">{OP_SYMBOLS[op]}</span>
     <span>{num2}</span>
@@ -27,7 +27,7 @@ const QuestionDisplay = memo(({ num1, num2, op }: { num1: number, num2: number, 
 ));
 
 const HintDisplay = memo(({ showHint, hintText }: { showHint: boolean, hintText: string }) => (
-  <div className="h-16 flex items-center justify-center"> {/* Height reserved to prevent jump */}
+  <div className="h-10 flex items-center justify-center"> {/* Height reserved to prevent jump */}
     <AnimatePresence>
       {showHint && (
         <motion.div
@@ -36,7 +36,7 @@ const HintDisplay = memo(({ showHint, hintText }: { showHint: boolean, hintText:
           exit={{ opacity: 0, y: -10 }}
           className="text-center z-20"
         >
-          <span className="mc-hint text-3xl border-black inline-block whitespace-nowrap">
+          <span className="mc-hint text-xl border-black inline-block whitespace-nowrap">
             HINT: {hintText}
           </span>
         </motion.div>
@@ -52,7 +52,7 @@ const LevelEffect = memo(({ type }: { type: 'up' | 'down' }) => (
     transition={{ duration: 2.5, times: [0, 0.2, 0.8, 1] }}
     className="absolute inset-0 flex items-center justify-center pointer-events-none z-[100]"
   >
-    <div className={`mc-title text-7xl md:text-9xl drop-shadow-[0_8px_0_rgba(0,0,0,0.8)] ${type === 'up' ? 'text-green-400' : 'text-yellow-300'}`}>
+    <div className={`mc-title text-5xl md:text-7xl drop-shadow-[0_8px_0_rgba(0,0,0,0.8)] ${type === 'up' ? 'text-green-400' : 'text-yellow-300'}`}>
       {type === 'up' ? 'LEVEL UP!' : 'LEVEL DOWN...'}
     </div>
   </motion.div>
@@ -110,8 +110,8 @@ const AnswerInput = ({ hasRemainder, disabled, onSubmit, onValueChange }: Answer
   };
 
   return (
-    <div className="flex flex-col items-center gap-8 w-full">
-      <div className="flex items-center gap-4 w-full max-w-2xl justify-center">
+    <div className="flex flex-col items-center gap-4 w-full">
+      <div className="flex items-center gap-3 w-full max-w-2xl justify-center">
         <input
           ref={inputRef}
           type="number"
@@ -119,12 +119,12 @@ const AnswerInput = ({ hasRemainder, disabled, onSubmit, onValueChange }: Answer
           onChange={(e) => { setVal(e.target.value); onValueChange?.(); }}
           onKeyDown={handleKeyDown}
           disabled={disabled}
-          className={`${hasRemainder ? 'w-1/2' : 'w-full'} bg-[#1e1e1e] border-4 border-[#373737] px-8 py-6 text-6xl md:text-7xl font-bold text-center text-white focus:outline-none focus:border-green-500 shadow-[inset_4px_4px_0_rgba(0,0,0,0.8)]`}
+          className={`${hasRemainder ? 'w-1/2' : 'w-full'} bg-[#1e1e1e] border-4 border-[#373737] px-4 py-3 text-4xl md:text-5xl font-bold text-center text-white focus:outline-none focus:border-green-500 shadow-[inset_4px_4px_0_rgba(0,0,0,0.8)]`}
           placeholder="?"
         />
         {hasRemainder && (
           <>
-            <span className="text-4xl md:text-5xl font-bold text-yellow-400 mc-title whitespace-nowrap">
+            <span className="text-2xl md:text-3xl font-bold text-yellow-400 mc-title whitespace-nowrap">
               あまり
             </span>
             <input
@@ -134,20 +134,20 @@ const AnswerInput = ({ hasRemainder, disabled, onSubmit, onValueChange }: Answer
               onChange={(e) => { setRemVal(e.target.value); onValueChange?.(); }}
               onKeyDown={handleRemKeyDown}
               disabled={disabled}
-              className="w-1/3 bg-[#1e1e1e] border-4 border-[#373737] px-4 py-6 text-6xl md:text-7xl font-bold text-center text-white focus:outline-none focus:border-green-500 shadow-[inset_4px_4px_0_rgba(0,0,0,0.8)]"
+              className="w-1/3 bg-[#1e1e1e] border-4 border-[#373737] px-3 py-3 text-4xl md:text-5xl font-bold text-center text-white focus:outline-none focus:border-green-500 shadow-[inset_4px_4px_0_rgba(0,0,0,0.8)]"
               placeholder="?"
             />
           </>
         )}
       </div>
-      
+
       {/* Submit/Control buttons are here now to access local state easily */}
-      <div className="flex items-center gap-6 w-full max-w-3xl mt-8">
+      <div className="flex items-center gap-4 w-full max-w-3xl mt-4">
         <Button
           variant="green"
           onClick={() => onSubmit(val, remVal)}
           disabled={val.trim() === '' || (hasRemainder && remVal.trim() === '') || disabled}
-          className="text-4xl h-32 flex-1"
+          className="text-2xl h-14 flex-1"
         >
           こたえる
         </Button>
@@ -196,7 +196,7 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
       {...pageTransition}
       className="w-full h-full flex flex-col items-center justify-center p-4 bg-stone/60"
     >
-      <div className="w-full max-w-5xl h-full flex flex-col items-center justify-between py-12">
+      <div className="w-full max-w-4xl h-full flex flex-col items-center justify-between py-4">
         <StatsPanel currentIndex={currentIndex} selectedGrade={selectedGrade} selectedOp={selectedOp} />
 
         <div className="flex-1 flex flex-col items-center justify-center w-full relative">
@@ -206,7 +206,7 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 1.1, opacity: 0 }}
-              className="flex flex-col items-center gap-12 w-full"
+              className="flex flex-col items-center gap-6 w-full"
             >
               <QuestionDisplay num1={currentQ.num1} num2={currentQ.num2} op={currentQ.op} />
               
@@ -227,19 +227,19 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
           </AnimatePresence>
         </div>
 
-        <div className="flex items-center gap-6 w-full max-w-3xl justify-end">
-           <div className="flex gap-4">
+        <div className="flex items-center gap-4 w-full max-w-3xl justify-end">
+          <div className="flex gap-3">
             <Button
               onClick={handleHint}
               disabled={feedback !== null || showHint}
-              className="h-16 text-xl w-48"
+              className="h-10 text-base w-32"
             >
               ヒント
             </Button>
             <Button
               onClick={() => handleAnswer('', '', true)}
               disabled={feedback !== null}
-              className="h-16 text-xl w-48"
+              className="h-10 text-base w-32"
             >
               パス
             </Button>
@@ -254,7 +254,7 @@ export const PlayingScreen: React.FC<PlayingScreenProps> = ({
               exit={{ scale: 0, opacity: 0 }}
               className="absolute inset-0 flex items-center justify-center pointer-events-none z-50"
             >
-              <div className={`text-[20rem] drop-shadow-2xl ${feedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}>
+              <div className={`text-[12rem] drop-shadow-2xl ${feedback === 'correct' ? 'text-green-500' : 'text-red-500'}`}>
                 {feedback === 'correct' ? '○' : '×'}
               </div>
             </motion.div>
