@@ -13,7 +13,9 @@ export type PraiseKind =
   | 'option'
   | 'fever'
   | 'result'
-  | 'best';
+  | 'best'
+  | 'golden'
+  | 'levelUp';
 
 const LINES: Record<PraiseKind, string[]> = {
   key: ['いいね！', 'ナイス！', 'そのちょうし！', '速い！', 'いけいけ！', 'かっこいい！', '気持ちいい！', 'リズムいい！', 'さえてる！', 'ノッてる！'],
@@ -29,13 +31,29 @@ const LINES: Record<PraiseKind, string[]> = {
   fever: ['フィーバーだ！！', '燃えてきた！！', '最高潮！！'],
   result: ['最後までやりきった！えらすぎ！', 'おつかれさま！すごかった！', '今日もがんばった！'],
   best: ['自己ベスト更新！！', '昨日の自分をこえた！！'],
+  golden: ['ゴールデンだ！！', 'キラキラ問題！！', 'チャンス到来！！'],
+  levelUp: ['レベルアップ！！', 'また強くなった！！', '成長してる！！'],
+};
+
+/** スキル「ほめことば＋」で足すことば */
+const PLUS: Partial<Record<PraiseKind, string[]>> = {
+  key: ['キレッキレ！', '指が速い！', 'プロの手つき！', 'しびれる！'],
+  correct: ['お見事！', 'ブラボー！', 'さすがすぎる！', '花まる！'],
+  correctBig: ['宇宙一！！', '神ってる！！', '最強すぎ！！'],
+  miss: ['失敗は成功のもと！', 'ここから大逆転！'],
+  select: ['目のつけどころがちがう！', 'さえてる〜！'],
+};
+
+let plus = false;
+export const setPraisePlus = (on: boolean) => {
+  plus = on;
 };
 
 let lastIndex: Partial<Record<PraiseKind, number>> = {};
 
 /** 同じことばが続かないように選ぶ。rnd は試験用に差しかえられる */
 export const pickPraise = (kind: PraiseKind, rnd: () => number = Math.random): string => {
-  const lines = LINES[kind];
+  const lines = plus && PLUS[kind] ? [...LINES[kind], ...PLUS[kind]!] : LINES[kind];
   if (lines.length === 1) return lines[0];
   let i = Math.floor(rnd() * lines.length);
   if (i === lastIndex[kind]) i = (i + 1) % lines.length;

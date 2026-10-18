@@ -1,5 +1,6 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react';
-import { comboMult, comboTier, HypeState } from '../../lib/hype/engine';
+import { bonusMult, comboMult, comboTier, HypeState } from '../../lib/hype/engine';
+import { Mods } from '../../lib/hype/skills';
 import { RULES } from '../../lib/hype/rules';
 import { OP_NAMES } from '../../constants';
 import { Grade, Operation } from '../../types';
@@ -8,6 +9,7 @@ export interface HudExtra {
   /** チャレンジののこり秒数（れんしゅうでは undefined） */
   timeLeft?: number;
   defeated: number;
+  mods: Mods;
 }
 
 export interface HypeHudHandle {
@@ -45,7 +47,9 @@ export const HypeHud = forwardRef<HypeHudHandle, Props>(function HypeHud({ index
   const timeBoxRef = useRef<HTMLDivElement>(null);
   const correctRef = useRef<HTMLSpanElement>(null);
   const zombieRef = useRef<HTMLSpanElement>(null);
-  const shown = useRef({ score: 0, combo: -1, fever: -1, time: '', urgent: false, correct: -1, defeated: -1 });
+  const bonusRef = useRef<HTMLDivElement>(null);
+  const bonusTextRef = useRef<HTMLSpanElement>(null);
+  const shown = useRef({ score: 0, combo: -1, fever: -1, time: '', urgent: false, correct: -1, defeated: -1, bonus: '' });
 
   useImperativeHandle(ref, () => ({
     update(s, dt, extra) {
@@ -73,7 +77,17 @@ export const HypeHud = forwardRef<HypeHudHandle, Props>(function HypeHud({ index
         }
       }
       const fs = s.fever ? s.feverStage : -1;
-      const totalMult = comboMult(s.combo) * (s.fever ? RULES.fever.mult[s.feverStage] : 1);
+      const bm = bonusMult(s, extra.mods);
+      const totalMult = comboMult(s.combo) * (s.fever ? RULES.fever.mult[s.feverStage] : 1) * bm;
+      // ボーナスタイム（ゴールデン問題の正解で始まる）
+      const bonusText = s.bonusSec > 0 ? `${bm > RULES.golden.bonusMult ? 'W ' : ''}BONUS ×${bm}  のこり ${Math.ceil(s.bonusSec)}` : '';
+      if (bonusText !== sh.bonus) {
+        const started = !sh.bonus && bonusText;
+        sh.bonus = bonusText;
+        if (bonusRef.current) bonusRef.current.style.visibility = bonusText ? 'visible' : 'hidden';
+        if (bonusTextRef.current) bonusTextRef.current.textContent = bonusText;
+        if (started) bonusRef.current?.animate([{ transform: 'scale(1.8)' }, { transform: 'scale(1)' }], { duration: 350, easing: 'ease-out' });
+      }
       if (multRef.current) multRef.current.textContent = `×${Number.isInteger(totalMult) ? totalMult : totalMult.toFixed(1)}`;
       if (sh.fever !== fs) {
         sh.fever = fs;
@@ -162,6 +176,9 @@ export const HypeHud = forwardRef<HypeHudHandle, Props>(function HypeHud({ index
         <span ref={feverRef} className="mc-title text-xl md:text-2xl" style={{ color: '#ffe14d' }}>FEVER</span>
         <div ref={gaugeRef} className="hype-gauge w-full max-w-[380px] h-10 relative overflow-hidden">
           <div ref={fillRef} className="hype-gauge-fill h-full" style={{ width: '0%' }} data-fever="0" />
+        </div>
+        <div ref={bonusRef} className="hype-golden-tag px-3 py-0.5 origin-right" style={{ visibility: 'hidden' }}>
+          <span ref={bonusTextRef} className="text-lg md:text-xl whitespace-nowrap" />
         </div>
       </div>
     </div>

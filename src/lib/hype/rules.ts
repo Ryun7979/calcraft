@@ -108,6 +108,36 @@ export const RULES = {
     cap: 1200,
     capFever: 1800,
   },
+
+  /** ゴールデン問題（運のボーナス）。見た目は色と光だけ（聖域に触れない） */
+  golden: {
+    /** 1問ごとにゴールデンになる確率（スキルで上がる） */
+    chance: 0.1,
+    /** 正解したときのボーナスタイムの秒数（止められるタイマー。スキルでのびる） */
+    bonusSec: 10,
+    /** ボーナスタイム中の点数の倍率 */
+    bonusMult: 2,
+    /** FEVER と重なったとき（W ボーナス）の倍率。スキル「W ボーナス強化」で wBonusMultUp */
+    wBonusMult: 2,
+    wBonusMultUp: 3,
+  },
+
+  /**
+   * ごほうび（経験値）。画面の点数は倍々でも、経験値は倍率を capMult までで数える（進む速さを壊さない）。
+   * 経験値 = Σ(正解の基本点 × min(capMult, コンボ×FEVER) × ボーナスタイムの倍率) ÷ perXp ＋ 遊びきったぶん playBonus
+   * 値は scripts/simulate.ts の試算で決めた（docs/spec.md §10）
+   */
+  reward: {
+    capMult: 2,
+    perXp: 10,
+    playBonus: 20,
+  },
+
+  /** プレイヤーレベル。レベル L → L+1 に必要な経験値 = levelBase + levelStep × (L − 1) */
+  level: {
+    levelBase: 150,
+    levelStep: 60,
+  },
 } as const;
 
 export type RankName = (typeof RULES.rank)[number]['name'];

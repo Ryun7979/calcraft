@@ -2,7 +2,7 @@
 // 腕前（正答率・1問にかかる秒数）× 問題数 × 答えの桁数 で、点数・ランク・FEVER 回数の分布を見る。
 import { initialHype, hypeAnswer, hypeKey, hypeTick, rankOf, perfectScore, HypeState } from '../src/lib/hype/engine';
 
-const SKILLS = [
+const SKILLS_LIST = [
   { name: 'はじめて', acc: 0.5, sec: 15 },
   { name: 'ゆっくり', acc: 0.7, sec: 12 },
   { name: 'ふつう', acc: 0.8, sec: 9 },
@@ -43,7 +43,7 @@ for (const digits of DIGITS) {
   for (const count of COUNTS) {
     console.log(`\n-- ${count}問 --`);
     console.log('腕前      | 点数 中央値(10%-90%) | 1問平均 | FEVER平均 | 最大コンボ | ランク分布');
-    for (const sk of SKILLS) {
+    for (const sk of SKILLS_LIST) {
       const res = Array.from({ length: RUNS }, () => simulate(sk.acc, sk.sec, count, digits, rnd));
       const scores = res.map((r) => r.score);
       const ranks: Record<string, number> = {};
@@ -70,7 +70,7 @@ for (const minutes of [1, 2, 3]) {
   const seconds = minutes * 60;
   const pool = Array.from({ length: 300 }, () => ({ answer: 10 }));
   const par = perfectScore(challengeParAnswers(pool, seconds));
-  for (const sk of SKILLS) {
+  for (const sk of SKILLS_LIST) {
     const res = Array.from({ length: RUNS }, () => {
       let s: HypeState = initialHype();
       let t = 0;
@@ -93,4 +93,57 @@ for (const minutes of [1, 2, 3]) {
     const rankStr = Object.entries(ranks).sort().map(([k, v]) => `${k}:${Math.round((v / RUNS) * 100)}%`).join(' ');
     console.log(`${sk.name.padEnd(6, '　')} | ${String(pct(res.map((r) => r.correct), 0.5)).padStart(4)} | ${String(pct(res.map((r) => r.score), 0.5)).padStart(8)} | ${rankStr}`);
   }
+}
+
+// --- P2：経験値・レベル（ゴールデン問題・ボーナスタイム込み）。れんしゅう 10問・答え 2 桁 ---
+import { rollGolden, xpOfPlay, rankScore } from '../src/lib/hype/engine';
+import { getMods, levelInfo, SKILLS, Mods } from '../src/lib/hype/skills';
+
+const playOnce = (acc: number, sec: number, count: number, mods: Mods) => {
+  let s: HypeState = initialHype(mods);
+  for (let q = 0; q < count; q++) {
+    const golden = rollGolden(s, rnd(), mods);
+    if (golden) s = { ...s, goldenSeen: s.goldenSeen + 1 };
+    for (let k = 0; k < 2; k++) {
+      s = hypeTick(s, sec / 3).state;
+      s = hypeKey(s, mods).state;
+    }
+    s = hypeTick(s, sec / 3).state;
+    s = hypeAnswer(s, rnd() < acc, 10, { golden, mods }).state;
+    s = hypeTick(s, 0.7).state;
+  }
+  return s;
+};
+
+const ALL = getMods(SKILLS.map((x) => x.id));
+const full = SKILLS.length + 1; // 全スキルがそろうレベル
+console.log(`\n=== 経験値（れんしゅう 10問・答え 2 桁）。全スキル ${SKILLS.length} 個 = レベル ${full} ===`);
+console.log('腕前      | 経験値/回 中央値 | ゴールデン正解/回 | ランク(ボーナス除く)が変わった回 | Lv2 | Lv5 | Lv10 | 全スキル(Lv' + full + ') | 50回でLv');
+for (const sk of SKILLS_LIST) {
+  const per = Array.from({ length: RUNS }, () => xpOfPlay(playOnce(sk.acc, sk.sec, 10, getMods([]))));
+  const gold = Array.from({ length: RUNS }, () => playOnce(sk.acc, sk.sec, 10, getMods([])).goldenCleared);
+  // ボーナス分を除かずにランクを出したら変わってしまった割合（除く効果の確認）
+  const perfect10 = perfectScore(Array.from({ length: 10 }, () => 10));
+  let changed = 0;
+  for (let i = 0; i < RUNS; i++) {
+    const st = playOnce(sk.acc, sk.sec, 10, getMods([]));
+    if (rankOf(st.score, perfect10, 10) !== rankOf(rankScore(st), perfect10, 10)) changed++;
+  }
+  // 何回遊ぶとそのレベルか（スキルは取った順に効く：半分ほど取った想定で後半を回す）
+  const playsTo = (target: number) => {
+    let xp = 0;
+    for (let n = 1; n <= 500; n++) {
+      const lv = levelInfo(xp).level;
+      const mods = lv >= 8 ? ALL : getMods([]);
+      xp += xpOfPlay(playOnce(sk.acc, sk.sec, 10, mods));
+      if (levelInfo(xp).level >= target) return n;
+    }
+    return 999;
+  };
+  const med = (f: () => number) => pct(Array.from({ length: 41 }, f), 0.5);
+  let xp50 = 0;
+  for (let n = 0; n < 50; n++) xp50 += xpOfPlay(playOnce(sk.acc, sk.sec, 10, levelInfo(xp50).level >= 8 ? ALL : getMods([])));
+  console.log(
+    `${sk.name.padEnd(6, '　')} | ${String(pct(per, 0.5)).padStart(5)} | ${(gold.reduce((a, b) => a + b, 0) / RUNS).toFixed(2).padStart(5)} | ${Math.round((changed / RUNS) * 100)}% | ${med(() => playsTo(2))} | ${med(() => playsTo(5))} | ${med(() => playsTo(10))} | ${med(() => playsTo(full))} | ${levelInfo(xp50).level}`,
+  );
 }

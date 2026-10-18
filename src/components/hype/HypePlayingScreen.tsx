@@ -18,7 +18,9 @@ import {
   hypeTick,
   initialHype,
   perfectScore,
+  rollGolden,
 } from '../../lib/hype/engine';
+import { Mods } from '../../lib/hype/skills';
 import { hypeSize, INTENSITY, RULES } from '../../lib/hype/rules';
 import { hypeAudio } from '../../lib/hype/audio';
 import { pickPraise } from '../../lib/hype/praise';
@@ -30,6 +32,7 @@ export interface HypeSummary {
   defeated: number;
   mode: PlayMode;
   minutes: ChallengeMinutes;
+  mods: Mods;
 }
 
 interface Props {
@@ -51,6 +54,8 @@ interface Props {
   summaryRef: React.MutableRefObject<HypeSummary | null>;
   /** 大きなカットイン中は true を返す関数を入れる（useGame が次の問題へ進むのを待つ） */
   holdRef: React.MutableRefObject<(() => boolean) | null>;
+  /** スキルの効き目（1プレイのあいだは変わらない） */
+  mods: Mods;
 }
 
 const center = (el: Element | null | undefined) => {
@@ -75,7 +80,11 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
   /** v2 の大きさ a → 強化後 b（演出のつよさで補間） */
   const sz = (a: number, b: number) => hypeSize(prof, a, b);
 
-  const hype = useRef<HypeState>(initialHype());
+  const mods = props.mods;
+  const hype = useRef<HypeState>(initialHype(mods));
+  /** いまの問題がゴールデンか（見た目は色と光だけ。入力欄には触れない） */
+  const goldenRef = useRef<{ index: number; golden: boolean }>({ index: -1, golden: false });
+  const [golden, setGolden] = useState(false);
   /** 止められるタイマー：理由が1つでもあれば FEVER ゲージの減り・チャレンジの時計が止まる */
   const pauses = useRef(new Set<string>());
   const timers = useRef<number[]>([]);
@@ -92,6 +101,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
   const [band, setBand] = useState<Band | null>(null);
   const [tier, setTier] = useState(0);
   const [feverOn, setFeverOn] = useState(false);
+  const [bonusOn, setBonusOn] = useState(false);
   const active = (phase === 'go' || phase === null) && !timeUp;
   const activeRef = useRef(active);
   activeRef.current = active;
@@ -239,6 +249,26 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
           invertPulse();
           break;
         }
+        case 'bonusStart': {
+          const m = ev.double ? mods.wBonusMult : RULES.golden.bonusMult;
+          hypeAudio.bonus(ev.double);
+          setBonusOn(true);
+          showBand(ev.double ? `W ボーナス!! スコア ×${m}!!` : `ボーナスタイム!! スコア ×${m}`, ev.double ? 'rainbow' : 'gold');
+          fx.current?.flash('#ffd84d', 0.35, 220);
+          fx.current?.ring(center.x, center.y, '#ffd84d', window.innerWidth * 0.55);
+          fx.current?.burst(center.x, center.y, { count: 60, colors: ['#ffd84d', '#fff6b0', '#ffffff', '#ffb84d'], speed: 13, size: 11 });
+          fireworks(ev.double ? 8 : 4, 60);
+          battleRef.current?.say(ev.double ? 'ダブルボーナス！！' : 'ボーナスタイム！！', true, 'girl');
+          break;
+        }
+        case 'bonusEnd':
+          setBonusOn(false);
+          showBand('ボーナスタイム おしまい！', 'green');
+          break;
+        case 'shield':
+          hypeAudio.shield();
+          showBand('おまもり発動！ コンボを守った！', 'green');
+          break;
         case 'feverEnd':
           hypeAudio.feverEnd();
           hypeAudio.playBgm('play');
@@ -269,9 +299,9 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
     f?.setSpeedLines(0);
     hypeAudio.playBgm(null);
     const perfect = challenge
-      ? perfectScore(challengeParAnswers(questions, props.challengeMinutes * 60))
-      : perfectScore(questions.map((q) => q.answer));
-    summaryRef.current = { state: hype.current, perfect, defeated: 0, mode: props.playMode, minutes: props.challengeMinutes };
+      ? perfectScore(challengeParAnswers(questions, props.challengeMinutes * 60), mods)
+      : perfectScore(questions.map((q) => q.answer), mods);
+    summaryRef.current = { state: hype.current, perfect, defeated: 0, mode: props.playMode, minutes: props.challengeMinutes, mods };
 
     const seq: CountPhase[] = ['yoi', 3, 2, 1, 'go'];
     let t = 0;
@@ -376,7 +406,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
           fx.current?.firework(rand(0.05, 0.95) * window.innerWidth, rand(0.05, 0.35) * window.innerHeight);
         }
       }
-      hudRef.current?.update(s, dt, { timeLeft: challenge ? timeLeft.current : undefined, defeated: defeated.current });
+      hudRef.current?.update(s, dt, { timeLeft: challenge ? timeLeft.current : undefined, defeated: defeated.current, mods });
       writeSummary();
       raf = requestAnimationFrame(loop);
     };
@@ -389,9 +419,31 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
     keyIndex.current = 0;
   }, [currentIndex]);
 
+  // --- ゴールデン問題：問題が見えたときに1回だけ決める ---
+  useEffect(() => {
+    if (!active || goldenRef.current.index === currentIndex) return;
+    const g = rollGolden(hype.current, Math.random(), mods);
+    goldenRef.current = { index: currentIndex, golden: g };
+    setGolden(g);
+    if (!g) return;
+    hype.current = { ...hype.current, goldenSeen: hype.current.goldenSeen + 1 };
+    // 出た瞬間：フラッシュ・輪・はじけ・ゆれ＋金の帯（進行は止めない）
+    later(60, () => {
+      const c = center(questionRef.current);
+      hypeAudio.golden();
+      fx.current?.flash('#ffd84d', 0.25, 160);
+      fx.current?.ring(c.x, c.y, '#ffd84d', sz(260, 420));
+      fx.current?.burst(c.x, c.y, { count: sz(40, 70), colors: ['#ffd84d', '#fff6b0', '#ffffff'], speed: sz(9, 12), size: sz(9, 12) });
+      shake(6);
+      showBand('ゴールデン問題!! 正解でボーナスタイム！', 'gold');
+      battleRef.current?.say(pickPraise('golden'), true, 'boy');
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentIndex, active]);
+
   // --- 1操作ごと：数字を打つ ---
   const onDigit = useCallback((ch: string, el: HTMLElement | null) => {
-    const r = hypeKey(hype.current);
+    const r = hypeKey(hype.current, mods);
     hype.current = r.state;
     const c = center(el);
     const t = comboTier(r.state.combo);
@@ -443,7 +495,8 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
     const wasPass = passing.current;
     passing.current = false;
     const guarded = pauses.current.has('cutin');
-    const r = hypeAnswer(hype.current, ok, currentQ.answer, guarded);
+    const wasGolden = goldenRef.current.index === currentIndex && goldenRef.current.golden;
+    const r = hypeAnswer(hype.current, ok, currentQ.answer, { guarded, golden: wasGolden, mods });
     hype.current = r.state;
     const c = center(questionRef.current);
     const t = comboTier(r.state.combo);
@@ -518,7 +571,8 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
     <motion.div key="hype-playing" {...pageTransition} className="w-full h-full relative overflow-hidden">
       {/* 背景（コンボで加速、FEVER で虹色） */}
       <div className="absolute inset-0 bg-stone hype-bg-scroll opacity-70" style={{ ['--hype-bg-speed' as string]: bgSpeed }} />
-      {feverOn && <div className="absolute inset-0 hype-fever-wash pointer-events-none" />}
+      {feverOn && <div className={`absolute inset-0 pointer-events-none ${mods.galaxy ? 'hype-fever-galaxy' : 'hype-fever-wash'}`} />}
+      {bonusOn && <div className="absolute inset-0 hype-bonus-wash pointer-events-none" />}
       {/* コンボ段階2以上・FEVER 中は、背景で光線が回る（段階が上がるほど濃く速く） */}
       {prof.hype > 0 && (tier >= 2 || feverOn) && (
         <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
@@ -546,7 +600,13 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
 
         {/* 主要エリア（聖域：入力の正確さ） */}
         <div className="flex-1 min-h-0 flex flex-col items-center justify-center w-full max-w-4xl gap-4 px-4 relative z-10">
-          <div className="h-24 flex items-center justify-center">
+          <div className="h-24 flex items-center justify-center relative">
+            {/* ゴールデンの札は問題の要素の外に置く（自動チェックは問題の中の span を3つ読む） */}
+            {active && golden && (
+              <div className="absolute -top-9 left-1/2 -translate-x-1/2 hype-golden-tag px-4 text-xl whitespace-nowrap pointer-events-none">
+                ★ ゴールデン問題 ★
+              </div>
+            )}
             <AnimatePresence mode="wait">
               {active && (
                 <motion.div
@@ -556,7 +616,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
                   animate={{ scale: 1, opacity: 1, rotate: 0 }}
                   exit={{ scale: 1.4, opacity: 0 }}
                   transition={{ type: 'spring', stiffness: 420, damping: 18 }}
-                  className="flex items-center gap-6 md:gap-10 text-7xl md:text-8xl font-black mc-title drop-shadow-[0_8px_0_rgba(0,0,0,0.6)]"
+                  className={`flex items-center gap-6 md:gap-10 text-7xl md:text-8xl font-black mc-title drop-shadow-[0_8px_0_rgba(0,0,0,0.6)] ${golden ? 'hype-golden' : ''}`}
                   data-testid="hype-question"
                 >
                   <span>{currentQ.num1}</span>

@@ -9,11 +9,12 @@ import { FxHandle } from './FxCanvas';
 import { PixelChar, PixelCharHandle } from './PixelChar';
 import { PraiseBubble, PraiseBubbleHandle } from './PraiseBubble';
 import { HypeSummary } from './HypePlayingScreen';
-import { challengeNextRankInfo, challengeRankOf, nextRankInfo, rankOf } from '../../lib/hype/engine';
+import { challengeNextRankInfo, challengeRankOf, nextRankInfo, rankOf, rankScore, xpOfPlay } from '../../lib/hype/engine';
+import { levelInfo, ROULETTE, spinRoulette } from '../../lib/hype/skills';
 import { INTENSITY, RankName, RULES } from '../../lib/hype/rules';
 import { hypeAudio } from '../../lib/hype/audio';
 import { pickPraise } from '../../lib/hype/praise';
-import { bestKey, challengeKey, loadSave, mutateSave } from '../../lib/storage';
+import { bestKey, challengeKey, loadSave, mutateSave, Progress } from '../../lib/storage';
 
 interface Props {
   answers: AnsweredQuestion[];
@@ -24,6 +25,8 @@ interface Props {
   fx: React.RefObject<FxHandle | null>;
   startGame: (isRetry?: boolean) => void;
   backToMenu: () => void;
+  progress: Progress;
+  updateProgress: (fn: (p: Progress) => void) => void;
 }
 
 const RANK_STYLE: Record<RankName, string> = {
@@ -58,7 +61,17 @@ interface BestResult {
 // 自己ベストの判定は1プレイにつき1回だけ（StrictMode で effect が2回走っても、2回目で「更新なし」にならないように）
 const bestCache = new WeakMap<object, BestResult>();
 
-export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op, intensity, fx, startGame, backToMenu }) => {
+interface XpResult {
+  /** このプレイの前の経験値の合計 */
+  before: number;
+  /** ルーレットの倍率（スキルがなければ null） */
+  roulette: number | null;
+  gained: number;
+}
+// 経験値の加算も1プレイ1回。ルーレットの結果は画面を開いた時点で決めて保存し、見せ方だけ遅らせる
+const xpCache = new WeakMap<object, XpResult>();
+
+export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op, intensity, fx, startGame, backToMenu, progress, updateProgress }) => {
   const prof = INTENSITY[intensity];
   const challenge = summary?.mode === 'challenge';
   const minutes = summary?.minutes ?? 1;
@@ -66,9 +79,11 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
   const perfect = summary?.perfect ?? 0;
   const total = answers.length;
   const correct = answers.filter((a) => a.isCorrect).length;
-  const rank = challenge ? challengeRankOf(score, perfect) : rankOf(score, perfect, total);
+  // ランクはゴールデンのボーナス分を除いた点数で決める（運でランクが変わらないように）
+  const rscore = summary ? rankScore(summary.state) : 0;
+  const rank = challenge ? challengeRankOf(rscore, perfect) : rankOf(rscore, perfect, total);
   const rankIndex = RULES.rank.findIndex((r) => r.name === rank);
-  const next = challenge ? challengeNextRankInfo(score, perfect) : nextRankInfo(score, perfect);
+  const next = challenge ? challengeNextRankInfo(rscore, perfect) : nextRankInfo(rscore, perfect);
 
   const [shown, setShown] = useState(0);
   const [step, setStep] = useState<Step>('count');
@@ -80,6 +95,11 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
   const badgeRef = useRef<HTMLDivElement>(null);
   const stepRef = useRef(step);
   stepRef.current = step;
+  const [xpRes, setXpRes] = useState<XpResult | null>(null);
+  const [xpShown, setXpShown] = useState(progress.xp);
+  const [rouletteFace, setRouletteFace] = useState<number | null>(null);
+  const [levelUp, setLevelUp] = useState<number | null>(null);
+  const xpInfo = levelInfo(xpShown);
 
   const both = (fn: (h: PixelCharHandle) => void) => {
     if (boyRef.current) fn(boyRef.current);
@@ -106,6 +126,90 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
     setBest(result);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 経験値（1回だけ保存）
+  useEffect(() => {
+    if (!summary) return;
+    let r = xpCache.get(summary.state);
+    if (!r) {
+      const base = xpOfPlay(summary.state);
+      const roulette = summary.mods.roulette ? spinRoulette() : null;
+      const gained = Math.round(base * (roulette ?? 1));
+      r = { before: progress.xp, roulette, gained };
+      xpCache.set(summary.state, r);
+      updateProgress((p) => {
+        p.xp += gained;
+      });
+    }
+    setXpRes(r);
+    setXpShown(r.before);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ランク発表のあと：（ルーレット →）経験値バーが伸びる → レベルアップ
+  useEffect(() => {
+    if (step !== 'done' || !xpRes) return;
+    let raf = 0;
+    const timers: number[] = [];
+    let spin = 0;
+    const celebrate = (lv: number) => {
+      setLevelUp(lv);
+      hypeAudio.levelUp();
+      fx.current?.confetti(140);
+      for (let i = 0; i < 8; i++)
+        timers.push(window.setTimeout(() => fx.current?.firework(Math.random() * window.innerWidth, Math.random() * window.innerHeight * 0.5), i * 110));
+      fx.current?.flash('#ffffff', 0.4, 200, true);
+      both((h) => h.play('jump'));
+      boyBubble.current?.say(pickPraise('levelUp'), true);
+      timers.push(window.setTimeout(() => girlBubble.current?.say('スキルポイントゲット！', true), 300));
+      timers.push(window.setTimeout(() => setLevelUp((cur) => (cur === lv ? null : cur)), 2200));
+    };
+    const grow = () => {
+      const start = performance.now();
+      const dur = 1400;
+      let lastLevel = levelInfo(xpRes.before).level;
+      let lastTick = 0;
+      const tick = (now: number) => {
+        const k = Math.min(1, (now - start) / dur);
+        const xp = xpRes.before + xpRes.gained * (1 - Math.pow(1 - k, 2));
+        setXpShown(xp);
+        const lv = levelInfo(xp).level;
+        if (lv > lastLevel) {
+          lastLevel = lv;
+          celebrate(lv);
+        }
+        if (now - lastTick > 60 && k < 1) {
+          hypeAudio.xpTick(k);
+          lastTick = now;
+        }
+        if (k < 1) raf = requestAnimationFrame(tick);
+      };
+      raf = requestAnimationFrame(tick);
+    };
+    if (xpRes.roulette !== null) {
+      // ルーレット：くるくる回って止まる
+      let i = 0;
+      spin = window.setInterval(() => {
+        setRouletteFace(ROULETTE[i++ % ROULETTE.length]);
+        hypeAudio.tick();
+      }, 80);
+      timers.push(
+        window.setTimeout(() => {
+          window.clearInterval(spin);
+          setRouletteFace(xpRes.roulette);
+          hypeAudio.select();
+          if ((xpRes.roulette ?? 1) > 1) fx.current?.bang(`×${xpRes.roulette}!!`, window.innerWidth / 2, window.innerHeight * 0.45, '#7dff6a', 48);
+          timers.push(window.setTimeout(grow, 400));
+        }, 1300),
+      );
+    } else timers.push(window.setTimeout(grow, 300));
+    return () => {
+      cancelAnimationFrame(raf);
+      window.clearInterval(spin);
+      timers.forEach((t) => window.clearTimeout(t));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, xpRes]);
 
   // 点数の数え上げ → ランク発表
   useEffect(() => {
@@ -276,6 +380,24 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
           )}
         </div>
 
+        {/* 経験値とプレイヤーレベル */}
+        {xpRes && (
+          <div className="flex items-center gap-3 px-1">
+            <span className="mc-title text-xl text-yellow-300 whitespace-nowrap">Lv {xpInfo.level}</span>
+            <div className="hype-gauge flex-1 h-7 relative overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-sky-500 to-cyan-300" style={{ width: `${(xpInfo.into / xpInfo.need) * 100}%` }} />
+            </div>
+            <span className="text-lg font-bold whitespace-nowrap">
+              経験値 <span className="text-green-300 text-2xl">+{xpRes.gained.toLocaleString()}</span>
+            </span>
+            {xpRes.roulette !== null && (
+              <span className="hype-golden-tag px-2 text-lg whitespace-nowrap">
+                ルーレット ×{step === 'done' && rouletteFace !== null ? rouletteFace : '?'}
+              </span>
+            )}
+          </div>
+        )}
+
         <div className="flex-1 overflow-y-auto grid grid-cols-1 md:grid-cols-2 gap-2 pr-1 min-h-0">
           {answers.map((ans, i) => (
             <div
@@ -314,6 +436,26 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
             タイトル
           </Button>
         </div>
+      </div>
+
+      {/* レベルアップ（クリックは下に通す） */}
+      <div className="absolute inset-0 z-[90] pointer-events-none flex items-center justify-center">
+        <AnimatePresence>
+          {levelUp !== null && (
+            <motion.div
+              key={levelUp}
+              initial={{ scale: 4, opacity: 0, rotate: -12 }}
+              animate={{ scale: 1, opacity: 1, rotate: -4 }}
+              exit={{ scale: 1.6, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 420, damping: 14 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <span className="hype-quake hype-shout hype-shout-rainbow text-7xl md:text-[9rem] leading-none">LEVEL UP!!</span>
+              <span className="hype-shout text-4xl md:text-6xl">Lv {levelUp}</span>
+              <span className="hype-golden-tag px-4 py-1 text-2xl">スキルポイント +1 ／ タイトルの「スキル」で使おう！</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </motion.div>
   );

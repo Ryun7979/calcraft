@@ -36,8 +36,34 @@ export interface FxHandle {
   /** マンガの「ドカッ!」のようなギザギザの吹き出し文字 */
   bang(text: string, x: number, y: number, color?: string, size?: number): void;
   setIntensity(p: IntensityProfile): void;
+  /** 花火にまぜる形（スキル「ほし花火」「ハート花火」）。空ならいつもの丸 */
+  setFireworkShapes(shapes: readonly FireworkShape[]): void;
   clear(): void;
 }
+
+export type FireworkShape = 'star' | 'heart';
+
+/** 形の花火の速度（t = 0〜1 で一周）。大きさはだいたい 1 */
+const shapeVec = (shape: FireworkShape, t: number): [number, number] => {
+  if (shape === 'heart') {
+    const a = t * Math.PI * 2;
+    const x = 16 * Math.pow(Math.sin(a), 3);
+    const y = -(13 * Math.cos(a) - 5 * Math.cos(2 * a) - 2 * Math.cos(3 * a) - Math.cos(4 * a));
+    return [x / 16, y / 16];
+  }
+  // 星：外側と内側の頂点（10個）を直線でつなぐ
+  const k = t * 10;
+  const i = Math.floor(k);
+  const f = k - i;
+  const pt = (j: number): [number, number] => {
+    const r = j % 2 ? 0.45 : 1;
+    const a = -Math.PI / 2 + (j * Math.PI) / 5;
+    return [Math.cos(a) * r, Math.sin(a) * r];
+  };
+  const [x1, y1] = pt(i);
+  const [x2, y2] = pt(i + 1);
+  return [x1 + (x2 - x1) * f, y1 + (y2 - y1) * f];
+};
 
 interface Ring {
   x: number;
@@ -101,6 +127,7 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
     flash: { color: '#fff', alpha: 0, start: 0, ms: 1, strong: false },
     speedLines: 0,
     fever: -1,
+    shapes: [] as readonly FireworkShape[],
     converge: { start: 0, ms: 0 },
     w: 0,
     h: 0,
@@ -141,8 +168,16 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
           hue === undefined
             ? PALETTE.rainbow
             : [`hsl(${hue},100%,60%)`, `hsl(${hue + 30},100%,70%)`, '#ffffff'];
-        const n = scaled(40);
+        // 形の花火（2回に1回くらい）は、形がくずれないように重力を弱く・速さをそろえる
+        const shape = s.shapes.length && Math.random() < 0.5 ? s.shapes[Math.floor(Math.random() * s.shapes.length)] : null;
+        const n = scaled(shape ? 56 : 40);
         for (let i = 0; i < n; i++) {
+          if (shape) {
+            const [ux, uy] = shapeVec(shape, i / n);
+            const color = shape === 'heart' ? (i % 3 ? '#ff6f9f' : '#ffffff') : colors[i % colors.length];
+            push({ x, y, vx: ux * 9, vy: uy * 9, g: 0.03, size: 7, color, life: 1.2, max: 1.2 });
+            continue;
+          }
           const a = (i / n) * Math.PI * 2;
           const sp = 7 + Math.random() * 3;
           push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0.12, size: 7, color: colors[i % colors.length], life: 1.1, max: 1.1 });
@@ -194,6 +229,9 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
       },
       setIntensity(p) {
         s.intensity = p;
+      },
+      setFireworkShapes(shapes) {
+        s.shapes = shapes;
       },
       ring(x, y, color = '#ffffff', maxR = 160) {
         if (s.rings.length > 24) s.rings.shift();

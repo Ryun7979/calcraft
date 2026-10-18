@@ -1,4 +1,5 @@
 import { RULES, RankName } from './rules';
+import { Mods, NO_MODS } from './skills';
 
 // マシマシモードの「盛り上がり」の状態。純粋な関数だけで進める（試算スクリプトからも使う）。
 // 正解・不正解の判定はしない。判定は useGame の handleAnswer のまま（聖域：入力の正確さ）。
@@ -17,6 +18,17 @@ export interface HypeState {
   correct: number;
   misses: number;
   keys: number;
+  /** ボーナスタイムののこり秒数（0 ならボーナスタイムではない） */
+  bonusSec: number;
+  /** ゴールデン問題が出た数・正解した数 */
+  goldenSeen: number;
+  goldenCleared: number;
+  /** 点数のうちボーナスタイムで上のせされた分（ランクはこれを除いて決める） */
+  bonusScore: number;
+  /** ごほうび用スコア（倍率は RULES.reward.capMult まで）。経験値はここから出す */
+  reward: number;
+  /** おまもり（まちがえてもコンボを守る）ののこり回数 */
+  shieldLeft: number;
 }
 
 export type HypeEvent =
@@ -25,7 +37,10 @@ export type HypeEvent =
   | { kind: 'gaugeMax' }
   | { kind: 'feverStart' }
   | { kind: 'feverStage'; stage: number }
-  | { kind: 'feverEnd' };
+  | { kind: 'feverEnd' }
+  | { kind: 'bonusStart'; double: boolean }
+  | { kind: 'bonusEnd' }
+  | { kind: 'shield' };
 
 export interface HypeResult {
   state: HypeState;
@@ -36,7 +51,7 @@ export interface HypeResult {
   gaugeDelta: number;
 }
 
-export const initialHype = (): HypeState => ({
+export const initialHype = (mods: Mods = NO_MODS): HypeState => ({
   combo: 0,
   maxCombo: 0,
   gauge: 0,
@@ -48,6 +63,12 @@ export const initialHype = (): HypeState => ({
   correct: 0,
   misses: 0,
   keys: 0,
+  bonusSec: 0,
+  goldenSeen: 0,
+  goldenCleared: 0,
+  bonusScore: 0,
+  reward: 0,
+  shieldLeft: mods.shield,
 });
 
 export const comboTier = (combo: number): number => {
@@ -79,26 +100,35 @@ const addGauge = (s: HypeState, amount: number, events: HypeEvent[]) => {
 };
 
 /** 数字を1つ打った（消したときも「操作」としてほめるが、ゲージは打ったときだけ） */
-export const hypeKey = (prev: HypeState): HypeResult => {
+export const hypeKey = (prev: HypeState, mods: Mods = NO_MODS): HypeResult => {
   const s = { ...prev, keys: prev.keys + 1 };
   const events: HypeEvent[] = [];
-  const delta = addGauge(s, s.fever ? RULES.fever.key : RULES.gauge.key, events);
+  const delta = addGauge(s, s.fever ? RULES.fever.key : RULES.gauge.key * mods.gaugeMult, events);
   return { state: s, events, gained: 0, gaugeDelta: delta };
 };
 
 export const answerPoints = (answer: number) =>
   RULES.score.base + RULES.score.perDigit * Math.max(1, String(Math.abs(answer)).length);
 
-/**
- * こたえた結果を反映する。
- * @param guarded 大きなカットインの最中なら true。不正解でもコンボ・ゲージを減らさない
- */
-export const hypeAnswer = (
-  prev: HypeState,
-  isCorrect: boolean,
-  answer: number,
-  guarded = false,
-): HypeResult => {
+/** いまのボーナスタイムの倍率（ボーナスタイムでなければ 1。FEVER と重なると W ボーナス） */
+export const bonusMult = (s: HypeState, mods: Mods = NO_MODS) =>
+  s.bonusSec > 0 ? (s.fever ? mods.wBonusMult : RULES.golden.bonusMult) : 1;
+
+/** ゴールデン問題にするかどうか（乱数は引数で渡す） */
+export const rollGolden = (s: HypeState, rnd: number, mods: Mods = NO_MODS) =>
+  rnd < mods.goldenChance * (s.bonusSec > 0 ? mods.rushMult : 1);
+
+export interface AnswerOptions {
+  /** 大きなカットインの最中なら true。不正解でもコンボ・ゲージを減らさない */
+  guarded?: boolean;
+  /** ゴールデン問題だった */
+  golden?: boolean;
+  mods?: Mods;
+}
+
+/** こたえた結果を反映する */
+export const hypeAnswer = (prev: HypeState, isCorrect: boolean, answer: number, opts: AnswerOptions = {}): HypeResult => {
+  const { guarded = false, golden = false, mods = NO_MODS } = opts;
   const s = { ...prev };
   const events: HypeEvent[] = [];
   let gained = 0;
@@ -114,8 +144,19 @@ export const hypeAnswer = (
     if (s.combo % RULES.combo.bandEvery === 0) events.push({ kind: 'comboBand', combo: s.combo });
 
     // 点数は「いまの倍率」で数える（FEVER に入るのは加点のあと）
-    gained = Math.round(answerPoints(answer) * comboMult(s.combo) * feverMult(s));
+    const base = answerPoints(answer);
+    const mult = comboMult(s.combo) * feverMult(s);
+    const bonus = bonusMult(s, mods);
+    gained = Math.round(base * mult * bonus);
     s.score += gained;
+    s.bonusScore += gained - Math.round(base * mult);
+    s.reward += base * Math.min(RULES.reward.capMult, mult) * bonus;
+    if (golden) {
+      // ボーナスタイムは「次の問題から」。のこっていたら入れなおす
+      s.goldenCleared += 1;
+      s.bonusSec = mods.bonusSec;
+      events.push({ kind: 'bonusStart', double: s.fever });
+    }
 
     if (s.fever) {
       s.feverCorrect += 1;
@@ -126,12 +167,15 @@ export const hypeAnswer = (
         events.push({ kind: 'feverStage', stage });
       }
     } else {
-      gaugeDelta = addGauge(s, RULES.gauge.correct, events);
+      gaugeDelta = addGauge(s, RULES.gauge.correct * mods.gaugeMult, events);
     }
   } else {
     s.misses += 1;
     if (!guarded) {
-      s.combo = 0;
+      if (s.shieldLeft > 0 && s.combo > 0) {
+        s.shieldLeft -= 1;
+        events.push({ kind: 'shield' });
+      } else s.combo = 0;
       if (s.fever) {
         const before = s.gauge;
         s.gauge = clampGauge(s.gauge - RULES.fever.miss);
@@ -155,23 +199,36 @@ const endFever = (s: HypeState, events: HypeEvent[]) => {
   events.push({ kind: 'feverEnd' });
 };
 
-/** 時間を進める（FEVER 中だけゲージが減る）。止められるタイマーが止まっている間は呼ばない */
+/** 時間を進める（FEVER のゲージとボーナスタイムが減る）。止められるタイマーが止まっている間は呼ばない */
 export const hypeTick = (prev: HypeState, dtSec: number): HypeResult => {
-  if (!prev.fever || dtSec <= 0) return { state: prev, events: [], gained: 0, gaugeDelta: 0 };
+  if ((!prev.fever && prev.bonusSec <= 0) || dtSec <= 0) return { state: prev, events: [], gained: 0, gaugeDelta: 0 };
   const s = { ...prev };
   const events: HypeEvent[] = [];
-  const drain = (RULES.gauge.max / RULES.fever.emptySec[s.feverStage]) * dtSec;
-  s.gauge = clampGauge(s.gauge - drain);
-  if (s.gauge <= 0) endFever(s, events);
+  let drain = 0;
+  if (s.bonusSec > 0) {
+    s.bonusSec = Math.max(0, s.bonusSec - dtSec);
+    if (s.bonusSec <= 0) events.push({ kind: 'bonusEnd' });
+  }
+  if (s.fever) {
+    drain = (RULES.gauge.max / RULES.fever.emptySec[s.feverStage]) * dtSec;
+    s.gauge = clampGauge(s.gauge - drain);
+    if (s.gauge <= 0) endFever(s, events);
+  }
   return { state: s, events, gained: 0, gaugeDelta: -drain };
 };
 
-/** その回の問題を全部正解したときの点数（答えを打つ数字も数える） */
-export const perfectScore = (answers: number[]): number => {
-  let s = initialHype();
+/** ランクに使う点数（ゴールデンのボーナス分は除く。運でランクが変わらないように） */
+export const rankScore = (s: HypeState) => Math.max(0, s.score - s.bonusScore);
+
+/** 1プレイでもらえる経験値（ルーレットの倍率は結果画面でかける） */
+export const xpOfPlay = (s: HypeState) => Math.round(s.reward / RULES.reward.perXp) + RULES.reward.playBonus;
+
+/** その回の問題を全部正解したときの点数（答えを打つ数字も数える。ゲージのスキルも同じに効かせる。ゴールデンは数えない） */
+export const perfectScore = (answers: number[], mods: Mods = NO_MODS): number => {
+  let s = initialHype(mods);
   for (const a of answers) {
-    for (let k = 0; k < String(Math.abs(a)).length; k++) s = hypeKey(s).state;
-    s = hypeAnswer(s, true, a).state;
+    for (let k = 0; k < String(Math.abs(a)).length; k++) s = hypeKey(s, mods).state;
+    s = hypeAnswer(s, true, a, { mods }).state;
   }
   return s.score;
 };

@@ -425,6 +425,45 @@ class HypeAudio {
     if (!this.ready()) return;
     this.tone(this.sfxBus, 'square', 1800, this.ctx!.currentTime, 0.02, 0.06);
   }
+
+  /** ゴールデン問題が出た（キラリーン） */
+  golden() {
+    if (!this.ready()) return;
+    this.arp([88, 95, 100, 107], 0.05, 0.25, 0.18, 'triangle');
+    this.noise(this.sfxBus, this.ctx!.currentTime, 0.4, 0.05, 8000);
+  }
+
+  /** ボーナスタイムが始まった（double = W ボーナス） */
+  bonus(double: boolean) {
+    if (!this.ready()) return;
+    this.duck(1);
+    const seq = double ? [76, 81, 84, 88, 93, 96, 100] : [76, 81, 84, 88, 93];
+    this.arp(seq, 0.05, 0.22, 0.26);
+    this.kick(this.sfxBus, this.ctx!.currentTime, 0.6);
+  }
+
+  /** おまもりでコンボを守った（キン！） */
+  shield() {
+    if (!this.ready()) return;
+    const t = this.ctx!.currentTime;
+    this.tone(this.sfxBus, 'square', 1568, t, 0.15, 0.2);
+    this.tone(this.sfxBus, 'triangle', 2093, t + 0.04, 0.3, 0.15);
+  }
+
+  /** 経験値バーが伸びる（短いピッ。だんだん高く） */
+  xpTick(k: number) {
+    if (!this.ready()) return;
+    this.tone(this.sfxBus, 'square', 600 + k * 900, this.ctx!.currentTime, 0.03, 0.06);
+  }
+
+  /** プレイヤーのレベルアップ */
+  levelUp() {
+    if (!this.ready()) return;
+    this.duck(2);
+    const t = this.ctx!.currentTime;
+    this.kick(this.sfxBus, t, 0.7);
+    this.arp([72, 76, 79, 84, 79, 84, 88, 91, 96], 0.07, 0.28, 0.27);
+  }
 }
 
 export const hypeAudio = new HypeAudio();

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { Settings as SettingsIcon } from 'lucide-react';
 import { useGame } from './hooks/useGame';
@@ -13,7 +13,9 @@ import { HypeMenuScreen } from './components/hype/HypeMenuScreen';
 import { HypePlayingScreen, HypeSummary } from './components/hype/HypePlayingScreen';
 import { HypeResultScreen } from './components/hype/HypeResultScreen';
 import { Settings } from './types';
-import { loadSave, mutateSave } from './lib/storage';
+import { loadSave, mutateSave, Progress } from './lib/storage';
+import { getMods } from './lib/hype/skills';
+import { setPraisePlus } from './lib/hype/praise';
 import { INTENSITY, RULES } from './lib/hype/rules';
 import { hypeAudio } from './lib/hype/audio';
 import { playClickSound } from './lib/audio';
@@ -63,6 +65,18 @@ export default function App() {
     const next = mutateSave((d) => Object.assign(d.settings, patch)).settings;
     setSettings(next);
   }, []);
+
+  // マシマシの成長（経験値・スキル）。スキルの効き目は mods にまとめて各画面へ渡す
+  const [progress, setProgress] = useState<Progress>(() => loadSave().progress);
+  const mods = useMemo(() => getMods(progress.skills), [progress.skills]);
+  const updateProgress = useCallback((fn: (p: Progress) => void) => {
+    const next = mutateSave((d) => fn(d.progress)).progress;
+    setProgress({ ...next, skills: [...next.skills] });
+  }, []);
+  useEffect(() => {
+    fxRef.current?.setFireworkShapes(mods.fireworkShapes);
+    setPraisePlus(hype && mods.praisePlus);
+  }, [mods, hype]);
 
   // ブラウザは操作のあとでないと音を出せないので、最初の操作で音を準備する
   useEffect(() => {
@@ -121,6 +135,8 @@ export default function App() {
               setChallengeMinutes={(m) => updateSettings({ challengeMinutes: m })}
               startGame={startGame}
               fx={fxRef}
+              progress={progress}
+              updateProgress={updateProgress}
             />
           )}
 
@@ -158,6 +174,7 @@ export default function App() {
               fx={fxRef}
               summaryRef={summaryRef}
               holdRef={holdRef}
+              mods={mods}
             />
           )}
 
@@ -175,6 +192,8 @@ export default function App() {
               fx={fxRef}
               startGame={startGame}
               backToMenu={backToMenu}
+              progress={progress}
+              updateProgress={updateProgress}
             />
           )}
         </AnimatePresence>

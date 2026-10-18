@@ -1,4 +1,5 @@
 import { Settings } from '../types';
+import { SKILLS, SkillId } from './hype/skills';
 
 // 保存は localStorage の1キーにまとめる。書き換えは mutateSave() を通す。
 const SAVE_KEY = 'calcraft:v1';
@@ -7,6 +8,13 @@ export interface SaveData {
   settings: Settings;
   /** 自己ベスト。キーは bestKey() で作る */
   best: Record<string, number>;
+  /** マシマシの成長（経験値の合計と、取ったスキル） */
+  progress: Progress;
+}
+
+export interface Progress {
+  xp: number;
+  skills: SkillId[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -21,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
 const defaultSave = (): SaveData => ({
   settings: { ...DEFAULT_SETTINGS },
   best: {},
+  progress: { xp: 0, skills: [] },
 });
 
 /** 足りない項目は初期値で埋める（古い保存データや壊れたデータでも動くように） */
@@ -39,7 +48,16 @@ const normalize = (raw: unknown): SaveData => {
       challengeMinutes: s.challengeMinutes === 1 || s.challengeMinutes === 2 || s.challengeMinutes === 3 ? s.challengeMinutes : base.settings.challengeMinutes,
     },
     best: r.best && typeof r.best === 'object' ? { ...r.best } : {},
+    progress: normalizeProgress(r.progress),
   };
+};
+
+const normalizeProgress = (raw: unknown): Progress => {
+  const p = (raw && typeof raw === 'object' ? raw : {}) as Partial<Progress>;
+  const xp = typeof p.xp === 'number' && Number.isFinite(p.xp) && p.xp > 0 ? Math.floor(p.xp) : 0;
+  const known = new Set<string>(SKILLS.map((x) => x.id));
+  const skills = Array.isArray(p.skills) ? p.skills.filter((x): x is SkillId => known.has(x)) : [];
+  return { xp, skills: [...new Set(skills)] };
 };
 
 export const loadSave = (): SaveData => {
