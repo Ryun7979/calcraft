@@ -1,0 +1,14 @@
+# テキストの改行は core.autocrlf=true に任せる（ここでは変えない）。
+# 音声・画像・フォントは改行変換や差分・マージをさせない。外すとファイルが壊れる。
+*.mp3   binary
+*.wav   binary
+*.ogg   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary

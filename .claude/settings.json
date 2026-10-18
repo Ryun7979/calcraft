@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git ls-files:*)",
+      "Bash(git branch:*)",
+      "Bash(git remote:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git blame:*)",
+      "Bash(git check-attr:*)",
+      "Bash(npm run lint)",
+      "Bash(npm run build)",
+      "Bash(npx tsx scripts/simulate.ts)",
+      "Bash(node scripts/build-character-preview.mjs)",
+      "Bash(wc -c LEARNINGS.md)"
+    ]
+  }
+}

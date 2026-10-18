@@ -9,3 +9,6 @@ coverage/
 
 # 未採用の素材（Gemini で作ったものなど）
 _inbox/
+
+# Claude Code のマシン固有設定
+.claude/settings.local.json
