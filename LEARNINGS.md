@@ -20,12 +20,16 @@
 - **ランクを「点数 ÷ 満点」で決めない。** FEVER で点数が倍々（×16 まで）になるので、20 問のときに低く出すぎた（はじめての子が 100% C）。対数の比 `log(1+点数)/log(1+満点)` にすると、問題数によらず同じくらいの分布になった（`docs/spec.md` §7）。
 - **`file://` のページを作り直したら、`reload` ではなく開きなおす。** ブラウザ確認では「固定のスナップショット」になる。
 - **ブラウザ確認が終わったらタブを閉じる。** BGM が鳴りつづけることがある。
+- **ブラウザのペインが隠れていると、rAF・`resize`・`ResizeObserver` が止まり、聖域チェックが時間切れで `ok: false`（judgedCorrect 0）になる。** これは偽の失敗。4問にして `timeoutMs` を長くし、スクリーンショットを撮りつづけて描画を進めると通る。`resize_window` のあとは `dispatchEvent(new Event('resize'))` を手で送る。
+- **`getBoundingClientRect()`（縮小後）と `clientWidth`（縮小前）を混ぜて座標を作らない。** `FitStage` で縮小すると、`BattleField` のゾンビの止まる位置がずれた。比を取るか、倍率で割り戻す。
 
 ## Domain Knowledge 業務・仕事の事実
 <!-- 調べて確定した仕様・振る舞い・制約。次回は調べ直さず前提にできるもの -->
 - **`type="number"` の入力欄は、`e` `+` `-` `.` を打つと `value` が空文字になる**（入力途中の値が消える）。`onKeyDown` でこれらのキーを止めている。
 - **入力欄の外で打った数字は、フォーカスを移すだけだと届くかどうかがブラウザ次第。** 自分で値に足してからフォーカスする。
 - **このリポジトリのファイルは CRLF（`core.autocrlf=true`）。** スクリプトで置換するときは改行をそろえてから。
+- **この PC の `python` は Microsoft Store の入口だけで動かない。** スクリプトでの一括置換は `node -e` で書く。
+- **ポート 3000 を別のチャットの開発サーバーが使っていることがある。** そのときは一時的に `npx vite --port=3001 --strictPort` の設定を `launch.json` に足し、終わったら `git checkout -- .claude/launch.json` で戻す。
 - **Vite の開発サーバーはプロジェクト直下のファイルも配る。** だから `scripts/autoplay.js` はブラウザから `import('/scripts/autoplay.js')` で読める。
 
 ## Open Questions 要調整
