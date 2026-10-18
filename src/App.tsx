@@ -20,7 +20,7 @@ import { INTENSITY, RULES } from './lib/hype/rules';
 import { hypeAudio } from './lib/hype/audio';
 import { getEquipped, STARTER } from './lib/hype/collection';
 import { setCostume } from './lib/hype/characters';
-import { playClickSound } from './lib/audio';
+import { playClickSound, setSfxVolume } from './lib/audio';
 
 export default function App() {
   const [settings, setSettings] = useState<Settings>(() => loadSave().settings);
@@ -107,6 +107,11 @@ export default function App() {
     if (!hype) hypeAudio.playBgm(null);
     fxRef.current?.setIntensity(INTENSITY[settings.intensity]);
   }, [hype, settings.bgm, settings.intensity]);
+
+  useEffect(() => {
+    hypeAudio.setVolumes(settings.bgmVolume / 100, settings.sfxVolume / 100);
+    setSfxVolume(settings.sfxVolume / 100);
+  }, [settings.bgmVolume, settings.sfxVolume]);
 
   const openOptions = (e: React.MouseEvent) => {
     if (hype) {

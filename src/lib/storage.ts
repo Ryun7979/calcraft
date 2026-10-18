@@ -54,7 +54,12 @@ export const DEFAULT_SETTINGS: Settings = {
   playMode: 'practice',
   challengeMinutes: 1,
   restMinutes: 30,
+  bgmVolume: 100,
+  sfxVolume: 100,
 };
+
+const VOLUMES = [0, 25, 50, 75, 100];
+const volume = (v: unknown, fallback: Settings['bgmVolume']) => (VOLUMES.includes(v as number) ? (v as Settings['bgmVolume']) : fallback);
 
 const defaultSave = (): SaveData => ({
   settings: { ...DEFAULT_SETTINGS },
@@ -77,6 +82,8 @@ const normalize = (raw: unknown): SaveData => {
       playMode: s.playMode === 'practice' || s.playMode === 'challenge' ? s.playMode : base.settings.playMode,
       challengeMinutes: s.challengeMinutes === 1 || s.challengeMinutes === 2 || s.challengeMinutes === 3 ? s.challengeMinutes : base.settings.challengeMinutes,
       restMinutes: [0, 15, 30, 45, 60].includes(s.restMinutes as number) ? (s.restMinutes as Settings['restMinutes']) : base.settings.restMinutes,
+      bgmVolume: volume(s.bgmVolume, base.settings.bgmVolume),
+      sfxVolume: volume(s.sfxVolume, base.settings.sfxVolume),
     },
     best: r.best && typeof r.best === 'object' ? { ...r.best } : {},
     progress: normalizeProgress(r.progress),

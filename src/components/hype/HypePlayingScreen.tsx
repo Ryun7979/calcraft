@@ -626,10 +626,10 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
                 <motion.div
                   key={currentIndex}
                   ref={questionRef}
-                  initial={{ scale: 0.4, opacity: 0, rotate: -8 }}
-                  animate={{ scale: 1, opacity: 1, rotate: 0 }}
-                  exit={{ scale: 1.4, opacity: 0 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 18 }}
+                  // テンポ優先：前の問題は 0.08 秒で消し、次は 0.18 秒で出す（バネだと出きるまで約 0.9 秒かかった）
+                  initial={{ scale: 0.6, opacity: 0, rotate: -6 }}
+                  animate={{ scale: 1, opacity: 1, rotate: 0, transition: { duration: 0.18, ease: 'backOut' } }}
+                  exit={{ scale: 1.15, opacity: 0, transition: { duration: 0.08, ease: 'easeIn' } }}
                   className={`flex items-center gap-6 md:gap-10 text-7xl md:text-8xl font-black mc-title drop-shadow-[0_8px_0_rgba(0,0,0,0.6)] ${golden ? 'hype-golden' : ''}`}
                   data-testid="hype-question"
                 >

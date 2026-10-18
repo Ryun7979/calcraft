@@ -25,6 +25,8 @@ export type PlayMode = 'practice' | 'challenge';
 export type ChallengeMinutes = 1 | 2 | 3;
 /** 休けいのお知らせまでの分数（0 でお知らせしない） */
 export type RestMinutes = 0 | 15 | 30 | 45 | 60;
+/** 音の大きさ（%）。0 で鳴らさない */
+export type VolumeLevel = 0 | 25 | 50 | 75 | 100;
 
 export interface Settings {
   effectMode: EffectMode;
@@ -34,4 +36,8 @@ export interface Settings {
   playMode: PlayMode;
   challengeMinutes: ChallengeMinutes;
   restMinutes: RestMinutes;
+  /** BGM の大きさ（マシマシだけ） */
+  bgmVolume: VolumeLevel;
+  /** 効果音の大きさ（両方のモード） */
+  sfxVolume: VolumeLevel;
 }

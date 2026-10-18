@@ -21,6 +21,7 @@ http://localhost:3000 を開きます。
 
 ## ドキュメント
 
+- `docs/development.md` … 開発マニュアル（構成・よくある作業・検証・コミットの手順）
 - `docs/spec.md` … マシマシモードの仕様
 - `docs/issues.md` … あとで直す不具合・改善
 - `docs/character/preview.html` … キャラクターの動きの確認用デモ（ブラウザで直接開ける）

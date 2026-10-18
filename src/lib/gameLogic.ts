@@ -19,11 +19,13 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
         num1 = random(2, 9);
         num2 = random(11 - num1, 9);
       } else if (grade === 3) { // 2桁＋1桁（繰り上がりなし）
-        num1 = random(10, 89);
-        num2 = random(1, 9 - (num1 % 10));
+        const ones = random(0, 8); // 一の位が9だと必ず繰り上がるので0〜8から選ぶ
+        num1 = random(1, 8) * 10 + ones;
+        num2 = random(1, 9 - ones);
       } else if (grade === 4) { // 2桁＋1桁（繰り上がりあり）
-        num1 = random(11, 89);
-        num2 = random(10 - (num1 % 10), 9);
+        const ones = random(1, 9); // 一の位が0だと1桁では繰り上がらないので1〜9から選ぶ
+        num1 = random(1, 8) * 10 + ones;
+        num2 = random(10 - ones, 9);
       } else if (grade === 5) { // 2桁＋2桁（10の倍数）
         num1 = getNiceNumber(10, 80);
         num2 = getNiceNumber(10, 90 - num1);
@@ -65,8 +67,9 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
         num1 = random(1, 9) * 10 + ones;
         num2 = random(1, ones);
       } else if (grade === 4) { // 2桁－1桁（繰り下がりあり）
-        num1 = random(21, 98);
-        num2 = random((num1 % 10) + 1, 9);
+        const ones = random(0, 8); // 一の位が9だと1桁では繰り下がらないので0〜8から選ぶ
+        num1 = random(2, 9) * 10 + ones;
+        num2 = random(ones + 1, 9);
       } else if (grade === 5) { // 2桁－2桁（10の倍数）
         num1 = getNiceNumber(20, 90);
         num2 = getNiceNumber(10, num1 - 10);
@@ -158,7 +161,7 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
         num2 = random(2, 9);
         answer = random(11, 99);
         num1 = num2 * answer + random(0, num2 - 1);
-      } else if (grade === 7) { // 2桁 ÷ 10の倍数
+      } else if (grade === 7) { // 2〜3桁 ÷ 10の倍数
         num2 = getNiceNumber(10, 40);
         answer = random(2, 9);
         num1 = num2 * answer + random(0, num2 - 1);

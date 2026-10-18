@@ -51,7 +51,7 @@ export const DIFFICULTY_INFO: DifficultyMapping = {
     4: { tendency: '2桁÷1桁（商が2桁、あまりあり）', grade: '小4' },
     5: { tendency: '3桁÷1桁（キリの良い数、あまりあり）', grade: '小4' },
     6: { tendency: '3桁÷1桁（あまりあり）', grade: '小4' },
-    7: { tendency: '2桁÷10の倍数（あまりあり）', grade: '小4' },
+    7: { tendency: '2〜3桁÷10の倍数（あまりあり）', grade: '小4' },
     8: { tendency: '3桁÷10の倍数（あまりあり）', grade: '小4' },
     9: { tendency: '3桁÷2桁（あまりあり）', grade: '小4' },
     10: { tendency: '4桁÷2桁（あまりあり）', grade: '小5' },

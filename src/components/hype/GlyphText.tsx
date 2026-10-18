@@ -50,8 +50,9 @@ export const GlyphText: React.FC<{ text: string; cls: string; tone?: GlyphTone; 
   const t = tone ?? toneOf(cls);
   // hype-shout の文字の影・色はいらないので、大きさなどのクラスだけ残す
   const sizeCls = cls.replace(/hype-shout(-\w+)?/g, '');
+  // hype-quake などの自作クラスが display: inline-block を持つので、! で inline-flex を勝たせて折り返しを防ぐ（2桁のコンボが縦に割れた）
   return (
-    <span className={`${sizeCls} ${className} inline-flex items-end leading-none`} aria-label={text}>
+    <span className={`${sizeCls} ${className} !inline-flex items-end leading-none whitespace-nowrap`} aria-label={text}>
       {[...text].map((ch, i) => (
         <Glyph key={i} ch={ch} tone={t} />
       ))}

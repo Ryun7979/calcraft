@@ -1,8 +1,10 @@
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
-import { EffectIntensity, EffectMode, RestMinutes, Settings } from '../types';
+import { EffectIntensity, EffectMode, RestMinutes, Settings, VolumeLevel } from '../types';
 import { cn } from '../lib/utils';
+import { playClickSound } from '../lib/audio';
+import { hypeAudio } from '../lib/hype/audio';
 import { Button } from './ui/Button';
 import { Panel } from './ui/Panel';
 
@@ -30,6 +32,9 @@ const RESTS: { value: RestMinutes; label: string }[] = [
   { value: 45, label: '45分' },
   { value: 60, label: '60分' },
 ];
+
+const VOLUMES: VolumeLevel[] = [0, 25, 50, 75, 100];
+const volumeLabel = (v: VolumeLevel) => (v === 0 ? 'なし' : `${v}%`);
 
 const Row: React.FC<{ title: string; note?: string; children: React.ReactNode; disabled?: boolean }> = ({ title, note, children, disabled }) => (
   <div className={cn('flex flex-col gap-2', disabled && 'opacity-40')}>
@@ -99,16 +104,37 @@ export const OptionsDialog: React.FC<Props> = ({ settings, onChange, onClose }) 
           ))}
         </Row>
 
-        <Row title="BGM" note="マシマシモードの音楽" disabled={!hype}>
-          {[true, false].map((on) => (
+        {/* 「なし」は BGM オフ（settings.bgm）。それ以外はオンにして大きさを変える */}
+        <Row title="BGM の大きさ" note="マシマシモードの音楽" disabled={!hype}>
+          {VOLUMES.map((v) => {
+            const selected = v === 0 ? !settings.bgm : settings.bgm && settings.bgmVolume === v;
+            return (
+              <Button
+                key={v}
+                variant={selected ? 'green' : 'default'}
+                onClick={() => onChange(v === 0 ? { bgm: false } : { bgm: true, bgmVolume: v })}
+                disabled={!hype}
+                className="flex-1 h-12 text-lg"
+              >
+                {volumeLabel(v)}
+              </Button>
+            );
+          })}
+        </Row>
+
+        <Row title="効果音の大きさ" note="ボタン・正解・まちがいの音">
+          {VOLUMES.map((v) => (
             <Button
-              key={String(on)}
-              variant={settings.bgm === on ? 'green' : 'default'}
-              onClick={() => onChange({ bgm: on })}
-              disabled={!hype}
+              key={v}
+              variant={settings.sfxVolume === v ? 'green' : 'default'}
+              onClick={() => {
+                onChange({ sfxVolume: v });
+                // 新しい大きさがかかってから、ためしに1回鳴らす
+                window.setTimeout(() => (hype ? hypeAudio.select() : playClickSound()), 120);
+              }}
               className="flex-1 h-12 text-lg"
             >
-              {on ? 'オン' : 'オフ'}
+              {volumeLabel(v)}
             </Button>
           ))}
         </Row>

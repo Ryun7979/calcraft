@@ -9,6 +9,11 @@ const sounds: Record<string, HTMLAudioElement> = {
   click: new Audio(clickSound),
 };
 
+/** 効果音の大きさ（0〜1）。オプションの「効果音の大きさ」から呼ぶ */
+export const setSfxVolume = (v: number) => {
+  for (const a of Object.values(sounds)) a.volume = v;
+};
+
 const playSound = (name: string) => {
   const audio = sounds[name];
   if (!audio) return;

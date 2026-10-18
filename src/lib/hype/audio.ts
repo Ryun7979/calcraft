@@ -151,6 +151,11 @@ class HypeAudio {
   private master!: GainNode;
   private bgmBus!: GainNode;
   private sfxBus!: GainNode;
+  /** オプションの音量（bgmBus・sfxBus は FEVER や duck で動くので、その後ろに別にかける） */
+  private bgmVol!: GainNode;
+  private sfxVol!: GainNode;
+  private userBgm = 1;
+  private userSfx = 1;
   private noiseBuf!: AudioBuffer;
 
   private bgmEnabled = true;
@@ -194,12 +199,18 @@ class HypeAudio {
       this.master = ctx.createGain();
       this.master.gain.value = VOL.master;
       this.master.connect(limiter);
+      this.bgmVol = ctx.createGain();
+      this.bgmVol.gain.value = this.userBgm;
+      this.bgmVol.connect(this.master);
+      this.sfxVol = ctx.createGain();
+      this.sfxVol.gain.value = this.userSfx;
+      this.sfxVol.connect(this.master);
       this.bgmBus = ctx.createGain();
       this.bgmBus.gain.value = VOL.bgm;
-      this.bgmBus.connect(this.master);
+      this.bgmBus.connect(this.bgmVol);
       this.sfxBus = ctx.createGain();
       this.sfxBus.gain.value = VOL.sfx;
-      this.sfxBus.connect(this.master);
+      this.sfxBus.connect(this.sfxVol);
       this.noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
       const d = this.noiseBuf.getChannelData(0);
       for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
@@ -312,6 +323,15 @@ class HypeAudio {
     this.jingleUntil = Math.max(this.jingleUntil, t + j.dur);
     this.duck(delay + j.dur);
     return true;
+  }
+
+  /** オプションの音量（0〜1）。BGM は曲、効果音は操作音・ジングルにかかる */
+  setVolumes(bgm: number, sfx: number) {
+    this.userBgm = bgm;
+    this.userSfx = sfx;
+    if (!this.ctx) return;
+    this.bgmVol.gain.setTargetAtTime(bgm, this.ctx.currentTime, 0.03);
+    this.sfxVol.gain.setTargetAtTime(sfx, this.ctx.currentTime, 0.03);
   }
 
   setBgmEnabled(on: boolean) {
