@@ -316,7 +316,6 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
     window.setTimeout(() => girlBubble.current?.say(RANK_PRAISE[rank], true), 300);
     const showTrophy = rankIndex >= 3 && prof.hype > 0;
     if (showTrophy) setTrophy(true);
-    const t2 = window.setTimeout(() => setTrophy(false), 2600);
     const t = window.setTimeout(() => {
       setStep('done');
       if ((best?.isNew && score > 0) || best?.isNewCorrect) {
@@ -327,12 +326,16 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
         both((h) => h.play('jump'));
       }
     }, 1400);
-    return () => {
-      window.clearTimeout(t);
-      window.clearTimeout(t2);
-    };
+    return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
+
+  // トロフィーは 2.6 秒で消す。ランク発表の effect の中に置くと、1.4 秒後の setStep('done') の後片付けでタイマーが消され、出たままになる
+  useEffect(() => {
+    if (!trophy) return;
+    const t = window.setTimeout(() => setTrophy(false), 2600);
+    return () => window.clearTimeout(t);
+  }, [trophy]);
 
   // Enter 一発でもう一回（数え上げ中に押したら飛ばす）
   useEffect(() => {
@@ -353,30 +356,30 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
   const s = summary?.state;
 
   return (
-    <motion.div key="hype-result" {...pageTransition} className="w-full h-full relative flex items-center justify-center p-4" style={tileStyle('planks')}>
-      {/* 左右にふたり（大きく） */}
-      <div className="absolute left-0 bottom-0 h-[58%] aspect-[40/42] z-[65] pointer-events-none">
+    <motion.div key="hype-result" {...pageTransition} className="w-full h-full relative flex items-center justify-center px-4 pt-[21cqh] pb-[2cqh]" style={tileStyle('planks')}>
+      {/* 左右にふたり（大きく。幅は パネルの左右の余白 576px に収める） */}
+      <div className="absolute left-0 bottom-0 h-[54%] aspect-[40/42] z-[65] pointer-events-none">
         <PixelChar ref={boyRef} who="boy" className="w-full h-full" />
         <div className="absolute left-1/2 bottom-[66%] -translate-x-1/2">
           <PraiseBubble ref={boyBubble} tail="bottom" />
         </div>
       </div>
-      <div className="absolute right-0 bottom-0 h-[58%] aspect-[40/42] z-[65] pointer-events-none">
+      <div className="absolute right-0 bottom-0 h-[54%] aspect-[40/42] z-[65] pointer-events-none">
         <PixelChar ref={girlRef} who="girl" className="w-full h-full" />
         <div className="absolute left-1/2 bottom-[66%] -translate-x-1/2">
           <PraiseBubble ref={girlBubble} tail="bottom" />
         </div>
       </div>
 
-      {/* ランク S 以上：トロフィーを持ち上げたふたりが上から飛びこむ（2.6秒で消える） */}
-      <div className="absolute inset-x-0 top-[2%] flex justify-center z-[70] pointer-events-none">
+      {/* ランク S 以上：トロフィーを持ち上げたふたりが上から飛びこむ（2.6秒で消える）。パネルの上の余白に収め、点数・ランクを隠さない */}
+      <div className="absolute inset-x-0 top-[0.5%] flex justify-center z-[70] pointer-events-none">
         <AnimatePresence>
           {trophy && (
             <motion.img
               src={poseUrl('rank-trophy')}
               alt=""
               draggable={false}
-              className="h-[46vh] aspect-[159/89] hype-pose hype-glow"
+              className="h-[20cqh] aspect-[159/89] hype-pose hype-glow"
               initial={{ y: '-120%', scale: 0.4, rotate: -12 }}
               animate={{ y: '0%', scale: 1, rotate: 0 }}
               exit={{ y: '-30%', scale: 0.6, opacity: 0 }}
@@ -386,7 +389,7 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
         </AnimatePresence>
       </div>
 
-      <div className="mc-panel relative z-10 w-full max-w-3xl max-h-[94vh] flex flex-col gap-3 !bg-black/80 !p-4">
+      <div className="mc-panel relative z-10 w-full max-w-3xl max-h-full flex flex-col gap-3 !bg-black/80 !p-4">
         <h2 className="mc-title text-2xl md:text-3xl text-yellow-400 text-center">
           {challenge ? `${minutes}分チャレンジ けっか発表！` : 'けっか発表！'}
         </h2>

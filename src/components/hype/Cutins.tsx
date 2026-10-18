@@ -358,7 +358,7 @@ export const MiniCutinLayer = forwardRef<MiniCutinHandle, { ms: number }>(functi
     return (
       <div
         ref={s.box}
-        className={`absolute top-[26%] h-[19%] w-[min(34vw,560px)] ${left ? 'left-0' : 'right-0'}`}
+        className={`absolute top-[26%] h-[19%] w-[min(34cqw,560px)] ${left ? 'left-0' : 'right-0'}`}
         style={{ transform: `translateX(${left ? '-120%' : '120%'})` }}
       >
         <div className={`hype-mini absolute inset-0 ${left ? '-left-10' : '-right-10'}`} data-tone="gold" />

@@ -150,7 +150,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
         </div>
 
         {view === 'top' && (
-          <div className="w-full max-w-[min(94vw,1100px)] space-y-2 px-2">
+          <div className="w-full max-w-[min(94cqw,1100px)] space-y-2 px-2">
             {/* プレイヤーのレベルと経験値 */}
             <Panel className="!py-2 !px-4 flex items-center gap-4">
               <span className="mc-title text-xl lg:text-2xl text-yellow-300 whitespace-nowrap">Lv {lv.level}</span>
@@ -265,7 +265,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
         )}
 
         {view === 'select' && (
-          <div className="w-full max-w-[min(94vw,1500px)] space-y-2 px-2">
+          <div className="w-full max-w-[min(94cqw,1500px)] space-y-2 px-2">
             <Panel className="!py-2 !px-3 space-y-1">
               <h2 className="text-lg lg:text-xl 2xl:text-2xl font-bold text-gray-200 text-center">レベルを選択</h2>
               <div className="grid grid-cols-10 gap-2">

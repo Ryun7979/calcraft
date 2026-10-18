@@ -1,21 +1,22 @@
 import React, { useLayoutEffect, useState } from 'react';
 
-/** これより小さいウィンドウでは、この大きさの「仮の画面」に描いて縮める */
-const BASE_W = 1280;
-const BASE_H = 720;
+/** いつもこの大きさ（FHD・16:9）の「仮の画面」に描き、ウィンドウに収まるように拡大・縮小する */
+export const STAGE_W = 1920;
+export const STAGE_H = 1080;
 
 const measure = () => {
   const w = window.innerWidth;
   const h = window.innerHeight;
-  // 拡大はしない（上限 1）。仮の画面はウィンドウ ÷ 倍率 にして、いつも画面いっぱいに描く
+  // 縦横の比を保ったまま、ウィンドウに収まる最大の倍率。あまった部分は外側の背景になる
   // 大きさ 0（非表示のタブなど）のときは 0 で割らないように等倍にする
-  const scale = w > 0 && h > 0 ? Math.min(1, w / BASE_W, h / BASE_H) : 1;
-  return { scale, w: w / scale, h: h / scale };
+  const scale = w > 0 && h > 0 ? Math.min(w / STAGE_W, h / STAGE_H) : 1;
+  return { scale, left: (w - STAGE_W * scale) / 2, top: (h - STAGE_H * scale) / 2 };
 };
 
 /**
- * ウィンドウが小さいときに中身をまるごと縮小する入れ物（docs/issues.md #4）。
+ * 画面の中身を 1920×1080 の仮の画面に描き、ウィンドウに合わせてまるごと拡大・縮小する入れ物（docs/issues.md #4・#14）。
  * 背景と演出の Canvas はこの外に置く。中の要素の位置は getBoundingClientRect（縮小後の実座標）で取ること。
+ * 中では vh・vw ではなく、仮の画面に対する cqh・cqw を使う（container-type: size）。
  */
 export const FitStage: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [size, setSize] = useState(measure);
@@ -35,10 +36,13 @@ export const FitStage: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   return (
     <div
-      className="absolute top-0 left-0 flex items-center justify-center overflow-hidden"
+      className="absolute flex items-center justify-center overflow-hidden"
       style={{
-        width: size.w,
-        height: size.h,
+        left: size.left,
+        top: size.top,
+        width: STAGE_W,
+        height: STAGE_H,
+        containerType: 'size',
         transform: size.scale === 1 ? undefined : `scale(${size.scale})`,
         transformOrigin: '0 0',
       }}
