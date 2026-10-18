@@ -64,6 +64,7 @@
     legL: 1,
     legR: 1,
     aura: 0,
+    flash: 0,
     t: 0
   });
   var C = {
@@ -144,33 +145,48 @@
       )
     },
     zombie: {
-      // Z/z = くすんだ緑の肌、h = ぼさぼさの髪、s = かげ
+      // クリーパー風。G/g/L = 緑のまだら、W = 白っぽい点、s = かげ
       head: [
-        "hhhhHhhhhhHh",
-        "hHhhhhhHhhhh",
-        "hhZhhhZhhZhh",
-        "ZZZZZZZZZZZZ",
-        "ZZZZZZZZzZZZ",
-        "ZZZZZZZZZZZZ",
-        "zZZZZZZZZZZZ",
-        "ZZZZZZZZZZZz",
-        "ZZZZZZZZZZZZ",
-        "ZZzZZZZZZZZZ",
-        "ZZZZZZZZZZZZ",
+        "GLGGgGGLGGgG",
+        "GGgGGGWGGGGL",
+        "LGGGLGGGgGGG",
+        "GgGGGGGLGGWG",
+        "GGGLGgGGGGGg",
+        "WGGGGGGGGLGG",
+        "GGgGGLGGGGGG",
+        "GGGGGGGgGGLG",
+        "gGLGGGGGGGGG",
+        "GGGGWGGGLGgG",
+        "GLGGGGgGGGGG",
         "ssssssssssss"
       ],
-      palette: { Z: "#8fbf6a", z: "#6d9a4e", h: "#3f5a2c", H: "#2c4020", s: "#5a7d40" },
-      shirt: "#e0883a",
-      shirtDark: "#a85c1e",
-      skin: "#8fbf6a",
-      skinDark: "#6d9a4e",
-      pants: "#5c5c66",
-      shoe: "#3b3b3b",
-      ragged: true,
-      front: (_p, top) => (
-        // ばんそうこう（ほっぺ）
-        r(8, top + 9, 3, 1, "#ffd8a8") + r(9, top + 9, 1, 1, "#e0b080")
-      )
+      palette: { G: "#4fb03c", g: "#2f7d26", L: "#7fd86c", W: "#c8ecc0", s: "#2a6a20" },
+      shirt: "#4fb03c",
+      shirtDark: "#2a6a20",
+      skin: "#4fb03c",
+      skinDark: "#2f7d26",
+      pants: "#3f9a32",
+      shoe: "#24601c",
+      bodyH: 9,
+      legH: 3,
+      bodyPattern: [
+        "GgGLGGgG",
+        "LGGGGWGG",
+        "GGgGLGGg",
+        "GLGGGGgG",
+        "gGGWGGGL",
+        "GGLGGgGG",
+        "GgGGLGGG",
+        "LGGgGGWG",
+        "ssssssss"
+      ],
+      armless: true,
+      quad: true,
+      face: (p, hx, hy) => {
+        const eye = p.eyes === "x" ? ["#.#", ".#.", "#.#"] : ["W##", "###", "###"];
+        const mouth = [".##.", "####", "####", "#..#"];
+        return mask(eye, hx + 2, hy + 3) + mask(eye, hx + 7, hy + 3) + mask(mouth, hx + 4, hy + 6);
+      }
     }
   };
   var EYES = {
@@ -207,6 +223,7 @@
     skin.head.forEach((row, j) => {
       for (let i = 0; i < 12; i++) s += r(hx + i, hy + j, 1, 1, skin.palette[row[i]] ?? "#ff00ff");
     });
+    if (skin.face) return s + skin.face(p, hx, hy);
     const [eL, eR] = EYES[p.eyes];
     s += mask(eL, hx + 2, hy + 5);
     s += mask(eR, hx + 7, hy + 5);
@@ -247,29 +264,44 @@
   };
   var renderCharacter = (id, p) => {
     const skin = SKINS[id];
-    const legLenL = 4 * p.legL;
-    const legLenR = 4 * p.legR;
+    const legH = skin.legH ?? 4;
+    const bodyH = skin.bodyH ?? 6;
+    const legLenL = legH * p.legL;
+    const legLenR = legH * p.legR;
     const hipY = -Math.max(legLenL, legLenR);
-    const bodyTop = hipY - 6;
+    const bodyTop = hipY - bodyH;
     const headTop = bodyTop - 12 + p.headBob;
     let body = "";
     if (skin.back) body += skin.back(p, headTop);
     const leg = (x, len) => block(x, hipY, 3, Math.max(1, len), skin.pants) + r(x, hipY + Math.max(1, len) - 1, 3, 1, skin.shoe);
-    body += leg(-4, legLenL);
-    body += leg(1, legLenR);
-    body += block(-4, bodyTop, 8, 6, skin.shirt) + r(-4, bodyTop + 5, 8, 1, skin.shirtDark);
+    if (skin.quad) {
+      const backLeg = (x, len) => block(x, hipY, 4, Math.max(1, len - 1), skin.shoe);
+      const frontLeg = (x, len) => block(x, hipY, 4, Math.max(1, len), skin.pants) + r(x, hipY + Math.max(1, len) - 1, 4, 1, skin.shoe);
+      body += backLeg(-5, legLenR) + backLeg(1, legLenL);
+      body += frontLeg(-4, legLenL) + frontLeg(0, legLenR);
+    } else {
+      body += leg(-4, legLenL);
+      body += leg(1, legLenR);
+    }
+    body += block(-4, bodyTop, 8, bodyH, skin.shirt) + r(-4, bodyTop + bodyH - 1, 8, 1, skin.shirtDark);
+    skin.bodyPattern?.forEach((row, j) => {
+      for (let i = 0; i < 8; i++) body += r(-4 + i, bodyTop + j, 1, 1, skin.palette[row[i]] ?? "#ff00ff");
+    });
     if (skin.chest) body += skin.chest(bodyTop);
     if (skin.ragged) body += r(-3, bodyTop + 5, 1, 1, skin.skin) + r(0, bodyTop + 5, 1, 1, skin.skin) + r(2, bodyTop + 5, 1, 1, skin.skin);
     if (skin.skirt) body += block(-5, bodyTop + 4, 10, 3, skin.skirt) + r(-5, bodyTop + 6, 10, 1, "#6a3cc8");
-    body += renderArm(skin, -5, bodyTop + 0.5, p.armL, -1);
-    body += renderArm(skin, 5, bodyTop + 0.5, p.armR, 1);
+    if (!skin.armless) {
+      body += renderArm(skin, -5, bodyTop + 0.5, p.armL, -1);
+      body += renderArm(skin, 5, bodyTop + 0.5, p.armR, 1);
+    }
     body += renderHead(skin, p, -6, headTop);
     if (skin.front) body += skin.front(p, headTop);
+    if (p.flash > 0) body += `<g opacity="${clamp01(p.flash).toFixed(2)}">${body.replace(/fill="[^"]+"/g, 'fill="#ffffff"')}</g>`;
     const sx = 1 / p.squash;
     return `<g transform="translate(${p.x.toFixed(2)} ${p.y.toFixed(2)}) rotate(${p.tilt.toFixed(1)}) scale(${sx.toFixed(3)} ${p.squash.toFixed(3)})">` + renderAura(p, headTop) + body + "</g>";
   };
-  var CHAR_VIEWBOX = "-24 -50 48 54";
-  var CHAR_VIEW = { x: -24, y: -50, w: 48, h: 54 };
+  var CHAR_VIEWBOX = "-20 -38 40 42";
+  var CHAR_VIEW = { x: -20, y: -38, w: 40, h: 42 };
   var TAU = Math.PI * 2;
   var clamp01 = (x) => Math.min(1, Math.max(0, x));
   var ease = (x) => 1 - Math.pow(1 - clamp01(x), 3);
@@ -505,7 +537,7 @@
         return p;
       }
     },
-    // ゾンビの歩き：腕を前（横）につき出して、よたよた
+    // ゾンビの歩き：4本足でちょこちょこ、よたよた（腕はクリーパー風の見た目では描かない）
     zWalk: {
       duration: 0.8,
       loop: true,
@@ -516,9 +548,9 @@
         p.mouth = "wavy";
         p.armL = { angle: 95 + 6 * s, len: 6 };
         p.armR = { angle: 95 - 6 * s, len: 6 };
-        p.legL = 1 + 0.15 * Math.max(0, s);
-        p.legR = 1 + 0.15 * Math.max(0, -s);
-        p.tilt = 5 * s;
+        p.legL = 1 + 0.25 * Math.max(0, s);
+        p.legR = 1 + 0.25 * Math.max(0, -s);
+        p.tilt = 4 * s;
         p.headBob = Math.abs(s) > 0.8 ? 0.5 : 0;
         return p;
       }
@@ -540,7 +572,7 @@
         return p;
       }
     },
-    // ゾンビがわらう（まちがえたとき）
+    // ゾンビがわらう（まちがえたとき）：シュ〜と白く点滅（爆発はしない）
     zTaunt: {
       duration: 0.8,
       loop: false,
@@ -553,6 +585,7 @@
         p.armR = { angle: 150 - 20 * s, len: 10 };
         p.y = -Math.abs(s) * 1.5;
         p.squash = 1 + 0.05 * s;
+        p.flash = Math.sin(t * 22) > 0 ? 0.75 : 0;
         return p;
       }
     }

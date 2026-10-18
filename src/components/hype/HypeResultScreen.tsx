@@ -37,13 +37,13 @@ const RANK_STYLE: Record<RankName, string> = {
 };
 
 const RANK_PRAISE: Record<RankName, string> = {
-  C: 'ちょうせんしたのがえらい！',
+  C: '挑戦したのがえらい！',
   B: 'いいかんじ！',
   A: 'すごい！',
   S: 'すごすぎる！！',
-  SS: 'てんさいだ！！',
-  SSS: 'でんせつ！！',
-  '∞': 'むげんだい！！かみさま！？',
+  SS: '天才だ！！',
+  SSS: '伝説！！',
+  '∞': '無限大！！神さま！？',
 };
 
 type Step = 'count' | 'rank' | 'done';
@@ -112,7 +112,7 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
     hypeAudio.playBgm('result');
     both((h) => h.setBase('charge'));
     boyBubble.current?.say(pickPraise('result'), true);
-    window.setTimeout(() => girlBubble.current?.say(challenge ? `${correct}もん せいかい！` : 'どきどき…！', true), 400);
+    window.setTimeout(() => girlBubble.current?.say(challenge ? `${correct}問正解！` : 'どきどき…！', true), 400);
     const start = performance.now();
     const dur = 1500;
     let raf = 0;
@@ -205,13 +205,13 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
 
       <div className="mc-panel relative z-10 w-full max-w-3xl max-h-[94vh] flex flex-col gap-3 !bg-black/80 !p-4">
         <h2 className="mc-title text-2xl md:text-3xl text-yellow-400 text-center">
-          {challenge ? `${minutes}ぷん チャレンジ けっか！` : 'けっか はっぴょう！'}
+          {challenge ? `${minutes}分チャレンジ けっか発表！` : 'けっか発表！'}
         </h2>
 
         {challenge && (
           <div className="text-center">
             <span className="text-2xl font-bold text-white">
-              {minutes}ぷんで <span className="mc-title text-5xl text-yellow-300 mx-1">{correct}</span> もん せいかい！
+              {minutes}分で <span className="mc-title text-5xl text-yellow-300 mx-1">{correct}</span> 問正解！
             </span>
           </div>
         )}
@@ -223,12 +223,12 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
             <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-2 text-lg font-bold whitespace-nowrap">
               {!challenge && (
                 <span>
-                  せいかい <span className="text-yellow-300 text-2xl">{correct}</span>/{total}
+                  正解 <span className="text-yellow-300 text-2xl">{correct}</span>/{total}
                 </span>
               )}
-              <span>さいだいコンボ <span className="text-yellow-300 text-2xl">{s?.maxCombo ?? 0}</span></span>
-              <span>FEVER <span className="text-yellow-300 text-2xl">{s?.feverCount ?? 0}</span>かい</span>
-              <span>ゾンビ <span className="text-green-300 text-2xl">{summary?.defeated ?? 0}</span>たい</span>
+              <span>最大コンボ <span className="text-yellow-300 text-2xl">{s?.maxCombo ?? 0}</span></span>
+              <span>FEVER <span className="text-yellow-300 text-2xl">{s?.feverCount ?? 0}</span>回</span>
+              <span>ゾンビ <span className="text-green-300 text-2xl">{summary?.defeated ?? 0}</span>体</span>
             </div>
           </div>
 
@@ -254,23 +254,23 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
           {step === 'done' && best && (
             <>
               {challenge && best.isNewCorrect && (
-                <span className="hype-sticker px-4 py-1 text-xl">せいかいすう じこベスト！！ {correct}もん</span>
+                <span className="hype-sticker px-4 py-1 text-xl">正解数 自己ベスト！！ {correct}問</span>
               )}
               {best.isNew && score > 0 && (
-                <span className="hype-sticker px-4 py-1 text-xl">じこベスト こうしん！！ {score.toLocaleString()}てん</span>
+                <span className="hype-sticker px-4 py-1 text-xl">自己ベスト更新！！ {score.toLocaleString()}点</span>
               )}
               {!best.isNew && best.prev > 0 && (
                 <span className="text-lg text-gray-200">
-                  じこベストまで あと <span className="text-yellow-300 text-2xl font-bold">{(best.prev - score + 1).toLocaleString()}</span> てん！
+                  自己ベストまで あと <span className="text-yellow-300 text-2xl font-bold">{(best.prev - score + 1).toLocaleString()}</span> 点！
                 </span>
               )}
               {next ? (
                 <span className="text-lg text-gray-200">
-                  あと <span className="text-yellow-300 text-2xl font-bold">{next.need.toLocaleString()}</span> てんで{' '}
+                  あと <span className="text-yellow-300 text-2xl font-bold">{next.need.toLocaleString()}</span> 点で{' '}
                   <span className="text-yellow-300 font-bold">{next.name}</span> ランク！
                 </span>
               ) : rank === 'SS' ? (
-                <span className="text-lg text-gray-200">{challenge ? 'もっと はやく とけたら SSS ランク！' : 'ぜんもんせいかいで SSS ランク！'}</span>
+                <span className="text-lg text-gray-200">{challenge ? 'もっと速く解けたら SSS ランク！' : '全問正解で SSS ランク！'}</span>
               ) : null}
             </>
           )}

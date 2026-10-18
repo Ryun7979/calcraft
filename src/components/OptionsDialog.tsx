@@ -13,8 +13,8 @@ interface Props {
 }
 
 const MODES: { value: EffectMode; label: string; desc: string }[] = [
-  { value: 'calm', label: 'ひかえめ', desc: 'いままでの しずかな えんしゅつ' },
-  { value: 'hype', label: 'マシマシ!!', desc: 'ド派手！ なにをしても ほめまくる' },
+  { value: 'calm', label: 'ひかえめ', desc: '今までの静かな演出' },
+  { value: 'hype', label: 'マシマシ!!', desc: 'ド派手！何をしてもほめまくる' },
 ];
 
 const INTENSITIES: { value: EffectIntensity; label: string }[] = [
@@ -58,12 +58,12 @@ export const OptionsDialog: React.FC<Props> = ({ settings, onChange, onClose }) 
       <Panel className="w-full max-w-2xl !bg-[#262626] space-y-5 relative" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <h2 className="mc-title text-2xl text-yellow-400">オプション</h2>
-          <Button onClick={onClose} className="w-12 h-12 !p-0" aria-label="とじる">
+          <Button onClick={onClose} className="w-12 h-12 !p-0" aria-label="閉じる">
             <X className="w-6 h-6" />
           </Button>
         </div>
 
-        <Row title="えんしゅつモード">
+        <Row title="演出モード">
           {MODES.map((m) => (
             <Button
               key={m.value}
@@ -77,7 +77,7 @@ export const OptionsDialog: React.FC<Props> = ({ settings, onChange, onClose }) 
           ))}
         </Row>
 
-        <Row title="えんしゅつの つよさ" note="ひかえめ: フラッシュ・ゆれ・大きなカットインなし" disabled={!hype}>
+        <Row title="演出の強さ" note="ひかえめ：フラッシュ・ゆれ・大きなカットインなし" disabled={!hype}>
           {INTENSITIES.map((i) => (
             <Button
               key={i.value}
@@ -91,7 +91,7 @@ export const OptionsDialog: React.FC<Props> = ({ settings, onChange, onClose }) 
           ))}
         </Row>
 
-        <Row title="BGM" note="マシマシモードの おんがく" disabled={!hype}>
+        <Row title="BGM" note="マシマシモードの音楽" disabled={!hype}>
           {[true, false].map((on) => (
             <Button
               key={String(on)}

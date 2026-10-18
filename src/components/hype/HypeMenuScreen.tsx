@@ -32,7 +32,7 @@ const COUNTS: QuestionCount[] = [4, 10, 20];
 const MINUTES: ChallengeMinutes[] = [1, 2, 3];
 const LOGO = 'CALCRAFT'.split('');
 const LOGO_COLORS = ['#ff5a5a', '#ffb84d', '#ffe14d', '#7dff6a', '#4dd2ff', '#b47dff', '#ff8fb1', '#ffe14d'];
-const TAPE = '★ さんすうで ゾンビを やっつけろ！ ★ ほめほめ MAX!! ★ ブロッくん と ブロッちゃん が おうえんしてるよ！ ★ なにをしても ほめちゃう！ ';
+const TAPE = '★ 算数でゾンビをやっつけろ！ ★ ほめほめ MAX!! ★ ブロッくんとブロッちゃんが応援してるよ！ ★ 何をしてもほめちゃう！ ';
 
 export const HypeMenuScreen: React.FC<Props> = (props) => {
   const { selectedGrade, selectedOp, questionCount, playMode, challengeMinutes, fx } = props;
@@ -41,8 +41,8 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
 
   useEffect(() => {
     hypeAudio.playBgm('title');
-    const t1 = window.setTimeout(() => battleRef.current?.say('いっしょに さんすう しよう！', true, 'boy'), 500);
-    const t2 = window.setTimeout(() => battleRef.current?.say('ゾンビを やっつけよう！', true, 'girl'), 1100);
+    const t1 = window.setTimeout(() => battleRef.current?.say('いっしょに算数しよう！', true, 'boy'), 500);
+    const t2 = window.setTimeout(() => battleRef.current?.say('ゾンビをやっつけよう！', true, 'girl'), 1100);
     // ときどき花火
     const fw = window.setInterval(() => {
       fx.current?.firework(Math.random() * window.innerWidth, Math.random() * window.innerHeight * 0.4);
@@ -130,7 +130,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
 
         <div className="w-full max-w-[min(94vw,1500px)] space-y-2 px-2">
           <Panel className="!py-2 !px-3 space-y-1">
-            <h2 className="text-lg lg:text-xl 2xl:text-2xl font-bold text-gray-200 text-center">レベルをえらぶ</h2>
+            <h2 className="text-lg lg:text-xl 2xl:text-2xl font-bold text-gray-200 text-center">レベルを選択</h2>
             <div className="grid grid-cols-10 gap-2">
               {([1, 2, 3, 4, 5, 6, 7, 8, 9, 10] as Grade[]).map((g) => (
                 <Button
@@ -150,7 +150,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
           </Panel>
 
           <Panel className="!py-2 !px-3 space-y-1">
-            <h2 className="text-lg lg:text-xl 2xl:text-2xl font-bold text-gray-200 text-center">けいさんをえらぶ</h2>
+            <h2 className="text-lg lg:text-xl 2xl:text-2xl font-bold text-gray-200 text-center">計算を選択</h2>
             <div className="grid grid-cols-5 gap-2">
               {GRADE_OPERATIONS[selectedGrade].map((op) => (
                 <Button
@@ -167,9 +167,9 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
               ))}
             </div>
             <div className="text-center text-base lg:text-lg 2xl:text-2xl text-gray-300">
-              <span className="text-yellow-300 font-bold mr-2">でるもんだい</span>
+              <span className="text-yellow-300 font-bold mr-2">出題傾向</span>
               {info.tendency}
-              <span className="text-green-300 font-bold ml-2">（しょうがっこう {info.grade.replace('小', '')}ねんせい くらい）</span>
+              <span className="text-green-300 font-bold ml-2">（小学校 {info.grade.replace('小', '')}年生 相当）</span>
             </div>
           </Panel>
 
@@ -185,7 +185,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
                   className={cn('h-12 lg:h-14 2xl:h-16 !px-4 text-lg lg:text-2xl 2xl:text-3xl flex items-center gap-2 whitespace-nowrap', playMode === 'practice' && 'scale-105')}
                 >
                   <Pencil className="w-5 h-5 lg:w-7 lg:h-7" />
-                  れんしゅう
+                  練習
                 </Button>
                 <Button
                   variant={playMode === 'challenge' ? 'orange' : 'default'}
@@ -201,7 +201,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
               </div>
               <div className="flex items-center justify-end gap-2">
                 <span className="text-base lg:text-xl 2xl:text-2xl font-bold text-gray-200 whitespace-nowrap">
-                  {playMode === 'practice' ? 'もんだいの かず' : 'なんぷんで なんもん？'}
+                  {playMode === 'practice' ? '問題の数' : '何分で何問？'}
                 </span>
                 {playMode === 'practice'
                   ? COUNTS.map((n) => (
@@ -214,7 +214,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
                         }}
                         className={cn('text-base lg:text-2xl 2xl:text-3xl h-10 lg:h-14 2xl:h-16 w-20 lg:w-32 2xl:w-40 !px-2 whitespace-nowrap', questionCount === n && 'scale-110')}
                       >
-                        {n}もん
+                        {n}問
                       </Button>
                     ))
                   : MINUTES.map((m) => (
@@ -227,7 +227,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
                         }}
                         className={cn('text-base lg:text-2xl 2xl:text-3xl h-10 lg:h-14 2xl:h-16 w-20 lg:w-32 2xl:w-40 !px-2 whitespace-nowrap', challengeMinutes === m && 'scale-110')}
                       >
-                        {m}ぷん
+                        {m}分
                       </Button>
                     ))}
               </div>
@@ -238,7 +238,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
         <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 0.8, repeat: Infinity, ease: 'easeInOut' }} className="w-full max-w-xl 2xl:max-w-3xl px-2">
           <Button variant="orange" onClick={start} className="text-3xl 2xl:text-5xl w-full h-16 2xl:h-24 flex items-center gap-4 shadow-2xl hype-start">
             <Play fill="currentColor" className="w-8 h-8" />
-            {playMode === 'challenge' ? `${challengeMinutes}ぷん チャレンジ！` : 'あそぶ！'}
+            {playMode === 'challenge' ? `${challengeMinutes}分チャレンジ！` : 'あそぶ！'}
           </Button>
         </motion.div>
       </div>

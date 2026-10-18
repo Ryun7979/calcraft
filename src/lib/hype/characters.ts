@@ -1,10 +1,10 @@
 // マシマシモードのキャラクター（四角いドット）。React にもブラウザにも依存しない（docs/character/preview.html からも使う）。
 //   ブロッくん（boy）  : 草ブロックの頭の男の子。誇張する部位は「腕」（ビヨーンと伸びるパンチ）
 //   ブロッちゃん（girl）: さくらブロックの頭の女の子。ツインテールがゆれる。星のビーム
-//   ゾンビ（zombie）    : こわくない、ちょっとまぬけなゾンビ。やっつけられる役
+//   ゾンビ（zombie）    : クリーパー風。緑のまだら・腕なし・4本足。やっつけられる役（まちがえるとシュ〜と白く点滅）
 //
 // 座標は「マス」単位。原点 (0,0) は足もとの中央、y はマイナスが上。
-//   足: 3×4 マス ×2 / 胴: 8×6 マス / 頭: 12×12 マス / 腕: 2マス幅、長さ可変
+//   足: 3×4 マス ×2 / 胴: 8×6 マス / 頭: 12×12 マス / 腕: 2マス幅、長さ可変（ゾンビは足 4×3 ×4・胴 8×9・腕なし）
 // renderCharacter(skin, pose) が SVG の中身（文字列）を返し、アニメは「時間 t（秒）→ pose」の関数で書く。
 
 export type CharacterId = 'boy' | 'girl' | 'zombie';
@@ -36,6 +36,8 @@ export interface CharPose {
   legR: number;
   /** オーラの強さ 0〜3 */
   aura: number;
+  /** 体ぜんたいを白く光らせる 0〜1（クリーパーの点滅） */
+  flash: number;
   /** ゆらぎ用の時間（秒） */
   t: number;
 }
@@ -54,6 +56,7 @@ export const neutralPose = (): CharPose => ({
   legL: 1,
   legR: 1,
   aura: 0,
+  flash: 0,
   t: 0,
 });
 
@@ -88,8 +91,20 @@ interface Skin {
   front?: (p: CharPose, headTop: number) => string;
   /** まつげ */
   lashes?: boolean;
-  /** 服のすそをギザギザにする（ゾンビ） */
+  /** 服のすそをギザギザにする */
   ragged?: boolean;
+  /** 胴の高さ（マス）。ふだん 6 */
+  bodyH?: number;
+  /** 足の長さ（マス）。ふだん 4 */
+  legH?: number;
+  /** 胴の模様（8×bodyH）。文字は palette で色にする */
+  bodyPattern?: string[];
+  /** 腕を描かない（クリーパー） */
+  armless?: boolean;
+  /** 4本足（前の2本は4マス幅、うしろの2本は外側にのぞかせる） */
+  quad?: boolean;
+  /** 顔をまるごと自分で描く（ふつうの目・口のかわり） */
+  face?: (p: CharPose, hx: number, hy: number) => string;
 }
 
 const r = (x: number, y: number, w: number, h: number, fill: string) =>
@@ -174,32 +189,49 @@ const SKINS: Record<CharacterId, Skin> = {
       block(3, top - 2, 2, 2, '#ff3060') + block(7, top - 2, 2, 2, '#ff3060') + block(5, top - 1.5, 2, 2, '#ffd23c'),
   },
   zombie: {
-    // Z/z = くすんだ緑の肌、h = ぼさぼさの髪、s = かげ
+    // クリーパー風。G/g/L = 緑のまだら、W = 白っぽい点、s = かげ
     head: [
-      'hhhhHhhhhhHh',
-      'hHhhhhhHhhhh',
-      'hhZhhhZhhZhh',
-      'ZZZZZZZZZZZZ',
-      'ZZZZZZZZzZZZ',
-      'ZZZZZZZZZZZZ',
-      'zZZZZZZZZZZZ',
-      'ZZZZZZZZZZZz',
-      'ZZZZZZZZZZZZ',
-      'ZZzZZZZZZZZZ',
-      'ZZZZZZZZZZZZ',
+      'GLGGgGGLGGgG',
+      'GGgGGGWGGGGL',
+      'LGGGLGGGgGGG',
+      'GgGGGGGLGGWG',
+      'GGGLGgGGGGGg',
+      'WGGGGGGGGLGG',
+      'GGgGGLGGGGGG',
+      'GGGGGGGgGGLG',
+      'gGLGGGGGGGGG',
+      'GGGGWGGGLGgG',
+      'GLGGGGgGGGGG',
       'ssssssssssss',
     ],
-    palette: { Z: '#8fbf6a', z: '#6d9a4e', h: '#3f5a2c', H: '#2c4020', s: '#5a7d40' },
-    shirt: '#e0883a',
-    shirtDark: '#a85c1e',
-    skin: '#8fbf6a',
-    skinDark: '#6d9a4e',
-    pants: '#5c5c66',
-    shoe: '#3b3b3b',
-    ragged: true,
-    front: (_p, top) =>
-      // ばんそうこう（ほっぺ）
-      r(8, top + 9, 3, 1, '#ffd8a8') + r(9, top + 9, 1, 1, '#e0b080'),
+    palette: { G: '#4fb03c', g: '#2f7d26', L: '#7fd86c', W: '#c8ecc0', s: '#2a6a20' },
+    shirt: '#4fb03c',
+    shirtDark: '#2a6a20',
+    skin: '#4fb03c',
+    skinDark: '#2f7d26',
+    pants: '#3f9a32',
+    shoe: '#24601c',
+    bodyH: 9,
+    legH: 3,
+    bodyPattern: [
+      'GgGLGGgG',
+      'LGGGGWGG',
+      'GGgGLGGg',
+      'GLGGGGgG',
+      'gGGWGGGL',
+      'GGLGGgGG',
+      'GgGGLGGG',
+      'LGGgGGWG',
+      'ssssssss',
+    ],
+    armless: true,
+    quad: true,
+    face: (p, hx, hy) => {
+      // おなじみの顔（3×3 の目・下向きの口）。目に白い点を入れて少しかわいく。やられたときは × の目
+      const eye = p.eyes === 'x' ? ['#.#', '.#.', '#.#'] : ['W##', '###', '###'];
+      const mouth = ['.##.', '####', '####', '#..#'];
+      return mask(eye, hx + 2, hy + 3) + mask(eye, hx + 7, hy + 3) + mask(mouth, hx + 4, hy + 6);
+    },
   },
 };
 
@@ -241,6 +273,7 @@ const renderHead = (skin: Skin, p: CharPose, hx: number, hy: number) => {
   skin.head.forEach((row, j) => {
     for (let i = 0; i < 12; i++) s += r(hx + i, hy + j, 1, 1, skin.palette[row[i]] ?? '#ff00ff');
   });
+  if (skin.face) return s + skin.face(p, hx, hy);
   const [eL, eR] = EYES[p.eyes];
   s += mask(eL, hx + 2, hy + 5);
   s += mask(eR, hx + 7, hy + 5);
@@ -292,10 +325,12 @@ const renderAura = (p: CharPose, topY: number) => {
 /** pose → SVG の中身（<svg> の内側に入れる文字列） */
 export const renderCharacter = (id: CharacterId, p: CharPose): string => {
   const skin = SKINS[id];
-  const legLenL = 4 * p.legL;
-  const legLenR = 4 * p.legR;
+  const legH = skin.legH ?? 4;
+  const bodyH = skin.bodyH ?? 6;
+  const legLenL = legH * p.legL;
+  const legLenR = legH * p.legR;
   const hipY = -Math.max(legLenL, legLenR);
-  const bodyTop = hipY - 6;
+  const bodyTop = hipY - bodyH;
   const headTop = bodyTop - 12 + p.headBob;
 
   let body = '';
@@ -303,19 +338,35 @@ export const renderCharacter = (id: CharacterId, p: CharPose): string => {
   // 足（腰から下に伸ばす）
   const leg = (x: number, len: number) =>
     block(x, hipY, 3, Math.max(1, len), skin.pants) + r(x, hipY + Math.max(1, len) - 1, 3, 1, skin.shoe);
-  body += leg(-4, legLenL);
-  body += leg(1, legLenR);
+  if (skin.quad) {
+    // うしろの足（外側に1マスのぞく・1マス短い・濃い色）→ 前の足（4マス幅）。前後で歩きを逆にする
+    const backLeg = (x: number, len: number) => block(x, hipY, 4, Math.max(1, len - 1), skin.shoe);
+    const frontLeg = (x: number, len: number) =>
+      block(x, hipY, 4, Math.max(1, len), skin.pants) + r(x, hipY + Math.max(1, len) - 1, 4, 1, skin.shoe);
+    body += backLeg(-5, legLenR) + backLeg(1, legLenL);
+    body += frontLeg(-4, legLenL) + frontLeg(0, legLenR);
+  } else {
+    body += leg(-4, legLenL);
+    body += leg(1, legLenR);
+  }
   // 胴
-  body += block(-4, bodyTop, 8, 6, skin.shirt) + r(-4, bodyTop + 5, 8, 1, skin.shirtDark);
+  body += block(-4, bodyTop, 8, bodyH, skin.shirt) + r(-4, bodyTop + bodyH - 1, 8, 1, skin.shirtDark);
+  skin.bodyPattern?.forEach((row, j) => {
+    for (let i = 0; i < 8; i++) body += r(-4 + i, bodyTop + j, 1, 1, skin.palette[row[i]] ?? '#ff00ff');
+  });
   if (skin.chest) body += skin.chest(bodyTop);
   if (skin.ragged) body += r(-3, bodyTop + 5, 1, 1, skin.skin) + r(0, bodyTop + 5, 1, 1, skin.skin) + r(2, bodyTop + 5, 1, 1, skin.skin);
   if (skin.skirt) body += block(-5, bodyTop + 4, 10, 3, skin.skirt) + r(-5, bodyTop + 6, 10, 1, '#6a3cc8');
   // 腕
-  body += renderArm(skin, -5, bodyTop + 0.5, p.armL, -1);
-  body += renderArm(skin, 5, bodyTop + 0.5, p.armR, 1);
+  if (!skin.armless) {
+    body += renderArm(skin, -5, bodyTop + 0.5, p.armL, -1);
+    body += renderArm(skin, 5, bodyTop + 0.5, p.armR, 1);
+  }
   // 頭
   body += renderHead(skin, p, -6, headTop);
   if (skin.front) body += skin.front(p, headTop);
+  // 白く光る：同じ形を白でぬって上に重ねる
+  if (p.flash > 0) body += `<g opacity="${clamp01(p.flash).toFixed(2)}">${body.replace(/fill="[^"]+"/g, 'fill="#ffffff"')}</g>`;
 
   const sx = 1 / p.squash;
   return (
@@ -590,7 +641,7 @@ export const MOTIONS: Record<MotionName, Motion> = {
       return p;
     },
   },
-  // ゾンビの歩き：腕を前（横）につき出して、よたよた
+  // ゾンビの歩き：4本足でちょこちょこ、よたよた（腕はクリーパー風の見た目では描かない）
   zWalk: {
     duration: 0.8,
     loop: true,
@@ -601,9 +652,9 @@ export const MOTIONS: Record<MotionName, Motion> = {
       p.mouth = 'wavy';
       p.armL = { angle: 95 + 6 * s, len: 6 };
       p.armR = { angle: 95 - 6 * s, len: 6 };
-      p.legL = 1 + 0.15 * Math.max(0, s);
-      p.legR = 1 + 0.15 * Math.max(0, -s);
-      p.tilt = 5 * s;
+      p.legL = 1 + 0.25 * Math.max(0, s);
+      p.legR = 1 + 0.25 * Math.max(0, -s);
+      p.tilt = 4 * s;
       p.headBob = Math.abs(s) > 0.8 ? 0.5 : 0;
       return p;
     },
@@ -625,7 +676,7 @@ export const MOTIONS: Record<MotionName, Motion> = {
       return p;
     },
   },
-  // ゾンビがわらう（まちがえたとき）
+  // ゾンビがわらう（まちがえたとき）：シュ〜と白く点滅（爆発はしない）
   zTaunt: {
     duration: 0.8,
     loop: false,
@@ -638,6 +689,7 @@ export const MOTIONS: Record<MotionName, Motion> = {
       p.armR = { angle: 150 - 20 * s, len: 10 };
       p.y = -Math.abs(s) * 1.5;
       p.squash = 1 + 0.05 * s;
+      p.flash = Math.sin(t * 22) > 0 ? 0.75 : 0;
       return p;
     },
   },
