@@ -111,8 +111,9 @@ function quantize(cv, k = 8) {
   return cv;
 }
 
-/** ふちから白をたどって透明にする（絵の中の白は残る）。tol は白からの距離 */
-function cutout(cv, { tol = 40, feather = true } = {}) {
+/** ふちから白をたどって透明にする（絵の中の白は残る）。tol は白からの距離。
+ *  holes = true なら、ふちに囲まれた白（O や A の穴）も消す */
+function cutout(cv, { tol = 40, feather = true, holes = false } = {}) {
   const { width: W, height: H } = cv;
   const o = ctxOf(cv);
   const img = o.getImageData(0, 0, W, H);
@@ -133,6 +134,29 @@ function cutout(cv, { tol = 40, feather = true } = {}) {
     if (x < W - 1) stack.push(i + 1);
     if (y > 0) stack.push(i - W);
     if (y < H - 1) stack.push(i + W);
+  }
+  // 囲まれた穴の白：残っている白のかたまりのうち、大きいもの（全体の 0.3% 以上）だけを消す。
+  // 小さな白（つやのドット）は残す
+  if (holes) {
+    const minSize = W * H * 0.003;
+    for (let s = 0; s < W * H; s++) {
+      if (seen[s] || dist(s * 4) > tol) continue;
+      const comp = [];
+      const st = [s];
+      seen[s] = 1;
+      while (st.length) {
+        const i = st.pop();
+        comp.push(i);
+        const x = i % W, y = (i / W) | 0;
+        for (const j of [x > 0 ? i - 1 : -1, x < W - 1 ? i + 1 : -1, y > 0 ? i - W : -1, y < H - 1 ? i + W : -1]) {
+          if (j >= 0 && !seen[j] && dist(j * 4) <= tol) {
+            seen[j] = 1;
+            st.push(j);
+          }
+        }
+      }
+      if (comp.length >= minSize) for (const i of comp) d[i * 4 + 3] = 0;
+    }
   }
   if (feather) {
     // 透明のとなりの明るいふちを半透明にして白いにじみを消す
@@ -155,6 +179,26 @@ function trim(cv, pad = 0) {
   for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 16) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
   if (x1 < 0) return cv;
   return crop(cv, { x: Math.max(0, x0 - pad), y: Math.max(0, y0 - pad), w: Math.min(W, x1 + 1 + pad) - Math.max(0, x0 - pad), h: Math.min(H, y1 + 1 + pad) - Math.max(0, y0 - pad) });
+}
+
+/** 1ドットの大きさの候補（色の変わり目の間かくの多い順に [間かく, 回数]） */
+function dotSize(cv) {
+  const { width: W, height: H } = cv;
+  const d = ctxOf(cv).getImageData(0, 0, W, H).data;
+  const hist = {};
+  for (let y = 5; y < H; y += 7) {
+    let last = 0;
+    for (let x = 1; x < W; x++) {
+      const p = (y * W + x) * 4, q = p - 4;
+      const diff = Math.abs(d[p] - d[q]) + Math.abs(d[p + 1] - d[q + 1]) + Math.abs(d[p + 2] - d[q + 2]) + Math.abs(d[p + 3] - d[q + 3]);
+      if (diff > 90) {
+        const run = x - last;
+        if (run >= 4 && run < 80) hist[run] = (hist[run] || 0) + 1;
+        last = x;
+      }
+    }
+  }
+  return Object.entries(hist).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => [Number(k), v]);
 }
 
 /** 透明の余白を足して正方形にする（縦横の比を保ったままドットにするため） */
@@ -204,6 +248,28 @@ function show(cv, label = '', zoom = 1) {
 }
 const clearView = () => { $out.innerHTML = ''; };
 
+/** ファイル名にできない文字の呼び名 */
+const GLYPH_NAME = { '!': 'excl', '×': 'times', '+': 'plus', '∞': 'inf', '★': 'star', '?': 'q' };
+const glyphName = (ch) => GLYPH_NAME[ch] ?? ch;
+
+/** 文字のシート（白い余白で区切られた文字）を、1文字ずつ切り抜いてドットにし、_inbox/px/glyph-*.png に保存する */
+async function glyphs(file, chars, { zoom = 4 } = {}) {
+  const cv = await load(file);
+  const bs = boxes(cv, { minGap: 10, minSize: 60 });
+  if (bs.length !== chars.length) throw new Error(`${file}: 文字が ${bs.length} 個（${chars.length} 個のはず）`);
+  // 1ドットの大きさ（いちばん多い間かくが2ドットぶんのこともある）
+  const [[run]] = dotSize(trim(cutout(crop(cv, bs[0]), { tol: 40 })));
+  const dot = run > 30 ? run / 2 : run;
+  const out = [];
+  for (const [i, b] of bs.entries()) {
+    const c = trim(cutout(crop(cv, { x: b.x - 6, y: b.y - 6, w: b.w + 12, h: b.h + 12 }), { tol: 40, holes: true }));
+    const p = hardAlpha(pixelate(c, Math.round(c.width / dot), Math.round(c.height / dot), 0.4));
+    show(p, chars[i], zoom);
+    out.push(await save(p, `_inbox/px/glyph-${glyphName(chars[i])}.png`));
+  }
+  return { dot, saved: out.length };
+}
+
 /** PNG で保存（_inbox/ か src/assets/hype/ の中だけ） */
 async function save(cv, path) {
   const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
@@ -212,7 +278,7 @@ async function save(cv, path) {
   return `${path} ${blob.size}B`;
 }
 
-Object.assign(window, { load, boxes, crop, pixelate, quantize, cutout, trim, square, hardAlpha, resize, tile, show, clearView, save, newCanvas, ctxOf });
+Object.assign(window, { load, boxes, crop, pixelate, quantize, cutout, trim, square, hardAlpha, dotSize, glyphs, resize, tile, show, clearView, save, newCanvas, ctxOf });
 </script>
 </body>
 </html>

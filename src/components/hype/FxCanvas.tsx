@@ -1,6 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { INTENSITY, IntensityProfile, RULES } from '../../lib/hype/rules';
-import { preloadHypeImages, SpriteName, spriteImage, uiImage } from '../../lib/hype/assets';
+import { glyphImage, preloadHypeImages, SpriteName, spriteImage, uiImage } from '../../lib/hype/assets';
 
 // 演出用の Canvas。画面全体に重ね、クリックは下へ通す（pointer-events: none）。
 // React の再描画には乗せず、ref の命令で描く。座標はウィンドウ座標（getBoundingClientRect の値をそのまま使える）。
@@ -515,14 +515,26 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
           ctx.fillStyle = b.color;
           ctx.fill();
         }
-        ctx.font = `bold ${b.size}px "DotGothic16", "Press Start 2P", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = '#1d1209';
-        ctx.strokeText(b.text, 0, 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(b.text, 0, 2);
+        // 全部の文字に Gemini のブロック文字があれば絵で（MAX!! など）、無ければ文字で
+        const glyphs = [...b.text].map((ch) => glyphImage(ch));
+        if (glyphs.every(Boolean)) {
+          const h = b.size * 1.25;
+          const ws = glyphs.map((g) => (g!.naturalWidth / g!.naturalHeight) * h);
+          let gx = -ws.reduce((a, w) => a + w, 0) / 2;
+          glyphs.forEach((g, j) => {
+            ctx.drawImage(g!, gx, -h / 2 + 2, ws[j], h);
+            gx += ws[j];
+          });
+        } else {
+          ctx.font = `bold ${b.size}px "DotGothic16", "Press Start 2P", sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = '#1d1209';
+          ctx.strokeText(b.text, 0, 2);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(b.text, 0, 2);
+        }
         ctx.restore();
       }
 

@@ -6,6 +6,7 @@ import { Button } from '../ui/Button';
 import { Panel } from '../ui/Panel';
 import { FxHandle } from './FxCanvas';
 import { ItemIcon, RarityTag } from './HypeZukanDialog';
+import { capsuleUrl } from '../../lib/hype/assets';
 import { GACHA_ITEMS, pullGacha, PullResult, RARITIES, Rarity } from '../../lib/hype/collection';
 import { RULES } from '../../lib/hype/rules';
 import { hypeAudio } from '../../lib/hype/audio';
@@ -163,7 +164,7 @@ export const HypeGachaDialog: React.FC<Props> = ({ progress, updateProgress, fx,
           <div className="relative h-[340px] border-4 border-black bg-gradient-to-b from-indigo-950 to-purple-900 overflow-hidden flex items-center justify-center">
             {phase === 'idle' && (
               <div className="flex flex-col items-center gap-3 text-white">
-                <div className="hype-capsule w-28 h-28 opacity-80" />
+                <div className="hype-capsule-img w-28 h-28 opacity-80" style={{ backgroundImage: `url(${capsuleUrl(0)})` }} />
                 <span className="text-xl font-bold">コインで ガチャを まわそう！</span>
               </div>
             )}
@@ -179,8 +180,8 @@ export const HypeGachaDialog: React.FC<Props> = ({ progress, updateProgress, fx,
                     ref={capRef}
                     animate={wait ? { rotate: [0, -3, 3, 0] } : { rotate: [0, -14, 14, -10, 10, 0], scale: [1, 1.04, 1] }}
                     transition={{ duration: wait ? 1.2 : 0.5, repeat: Infinity, delay: 0.8 }}
-                    className={cn('hype-capsule w-40 h-40', stage === 3 && 'hype-capsule-rainbow')}
-                    style={{ ['--cap' as string]: CAP[stage].cap, ['--cap-glow' as string]: CAP[stage].glow }}
+                    className={cn('hype-capsule-img w-40 h-40', stage === 3 && 'hype-capsule-img-rainbow')}
+                    style={{ backgroundImage: `url(${capsuleUrl(stage)})`, ['--cap-glow' as string]: CAP[stage].glow }}
                   />
                 </motion.div>
                 <span className="absolute bottom-3 text-sm text-gray-300">クリック・Enter で とばす</span>

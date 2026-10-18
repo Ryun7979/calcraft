@@ -9,6 +9,14 @@ const TILE_URL = byName(import.meta.glob<string>('../../assets/hype/tiles/*.png'
 const SPRITE_URL = byName(import.meta.glob<string>('../../assets/hype/parts/*.png', { eager: true, import: 'default' }));
 const UI_URL = byName(import.meta.glob<string>('../../assets/hype/ui/*.png', { eager: true, import: 'default' }));
 const POSE_URL = byName(import.meta.glob<string>('../../assets/hype/pose/*.png', { eager: true, import: 'default' }));
+const GACHA_URL = byName(import.meta.glob<string>('../../assets/hype/gacha/*.png', { eager: true, import: 'default' }));
+const GLYPH_URL = byName(import.meta.glob<string>('../../assets/hype/glyphs/*.png', { eager: true, import: 'default' }));
+
+/** ファイル名にできない文字の呼び名（scripts/asset-lab/lab.html の GLYPH_NAME と同じ） */
+const GLYPH_NAME: Record<string, string> = { '!': 'excl', '×': 'times', '+': 'plus', '∞': 'inf', '★': 'star', '?': 'q' };
+
+/** ブロック文字の絵（大文字・数字・! × + ∞ ★ ?）。無い文字は undefined */
+export const glyphUrl = (ch: string): string | undefined => GLYPH_URL[GLYPH_NAME[ch] ?? ch];
 
 /** 背景の柄（16×16 か 32×32 ドット。くり返して敷く） */
 export type TileName =
@@ -20,8 +28,12 @@ export type TileName =
 /** パーティクルの粒（20×20 ドット） */
 export type SpriteName = 'star' | 'heart' | 'coin' | 'diamond' | 'sparkle' | 'note' | 'emerald' | 'block';
 
-/** ふきだし・札の枠 */
-export type UiName = 'bubble' | 'shout' | 'bang' | 'plate';
+/** ふきだし・札の枠・カットインの背景 */
+export type UiName = 'bubble' | 'shout' | 'bang' | 'plate' | 'shatter';
+
+/** ガチャのカプセル（レア度の番号 0〜3 の順） */
+const CAPSULES = ['common', 'rare', 'sr', 'ssr'] as const;
+export const capsuleUrl = (rarity: number): string => GACHA_URL[CAPSULES[Math.max(0, Math.min(3, rarity))]];
 
 /** キャラの決めポーズ */
 export type PoseName = 'fever-boy' | 'fever-girl' | 'rank-trophy';
@@ -59,4 +71,12 @@ export function preloadHypeImages() {
   Object.values(TILE_URL).forEach(image);
   Object.values(UI_URL).forEach(image);
   Object.values(POSE_URL).forEach(image);
+  Object.values(GLYPH_URL).forEach(image);
+  Object.values(GACHA_URL).forEach(image);
 }
+
+/** Canvas に描くためのブロック文字の絵。読みこみ前・無い文字は null */
+export const glyphImage = (ch: string) => {
+  const url = glyphUrl(ch);
+  return url ? image(url) : null;
+};

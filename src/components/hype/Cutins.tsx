@@ -2,7 +2,8 @@ import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { PixelChar, PixelCharHandle } from './PixelChar';
 import { RULES } from '../../lib/hype/rules';
-import { poseUrl } from '../../lib/hype/assets';
+import { poseUrl, uiUrl } from '../../lib/hype/assets';
+import { Glyph, GlyphText, hasGlyphs, toneOf } from './GlyphText';
 
 // カットインと帯。どれも pointer-events: none（入力をさまたげない）。
 // 画面の主要部分を隠す大きなカットイン（tier / fever / feverStage / combo）のあいだは、呼ぶ側で進行（FEVER ゲージの減り）を止める。
@@ -124,20 +125,39 @@ const BigPoses: React.FC<{ delay?: number }> = ({ delay = 0 }) => (
 );
 
 /** 文字を1つずつ叩きつける */
-const SlamLetters: React.FC<{ text: string; cls: string; delay?: number; step?: number }> = ({ text, cls, delay = 0, step = 0.07 }) => (
-  <div className="relative flex">
+const SlamLetters: React.FC<{ text: string; cls: string; delay?: number; step?: number }> = ({ text, cls, delay = 0, step = 0.07 }) => {
+  // 全部の文字に Gemini のブロック文字があれば絵で（色は hype-shout の色のクラスから）
+  const glyphs = hasGlyphs(text);
+  const tone = toneOf(cls);
+  const letterCls = glyphs ? cls.replace(/hype-shout(-\w+)?/g, '') : cls;
+  return (
+  <div className="relative flex items-end">
     {[...text].map((ch, i) => (
       <motion.span
         key={i}
-        className={cls}
+        className={letterCls}
         initial={{ scale: 5, opacity: 0, y: -80, rotate: i % 2 ? 25 : -25 }}
         animate={{ scale: 1, opacity: 1, y: 0, rotate: 0 }}
         transition={{ delay: delay + i * step, type: 'spring', stiffness: 520, damping: 16 }}
       >
-        {ch === ' ' ? ' ' : ch}
+        {glyphs ? <Glyph ch={ch} tone={tone} /> : ch === ' ' ? ' ' : ch}
       </motion.span>
     ))}
   </div>
+  );
+};
+
+/** ブロックがドカーンと砕けて飛び散る絵（Gemini 製）。真ん中から外へ広がって消える */
+const Shatter: React.FC<{ delay?: number }> = ({ delay = 0 }) => (
+  <motion.img
+    src={uiUrl('shatter')}
+    alt=""
+    draggable={false}
+    className="absolute inset-0 w-full h-full object-cover [image-rendering:pixelated]"
+    initial={{ scale: 0.35, opacity: 0 }}
+    animate={{ scale: [0.35, 1.05, 1.25], opacity: [0, 1, 0] }}
+    transition={{ delay, duration: 1.1, times: [0, 0.35, 1], ease: 'easeOut' }}
+  />
 );
 
 const TierCutin: React.FC<{ tier: number }> = ({ tier }) => {
@@ -157,6 +177,7 @@ const TierCutin: React.FC<{ tier: number }> = ({ tier }) => {
         animate={{ scaleX: 1 }}
         transition={{ duration: 0.18 }}
       />
+      <Shatter delay={0.1} />
       <BigChars motionName="shout" />
       <motion.div
         className="relative flex flex-col items-center gap-3"
@@ -186,6 +207,7 @@ const ComboCutin: React.FC<{ combo: number }> = ({ combo }) => {
         animate={{ x: '0%' }}
         transition={{ duration: 0.16, ease: 'easeOut' }}
       />
+      <Shatter />
       <motion.div
         className={`absolute bottom-[4%] w-[30%] h-[70%] ${who === 'boy' ? 'left-[2%]' : 'right-[2%]'}`}
         initial={{ y: '120%' }}
@@ -200,8 +222,8 @@ const ComboCutin: React.FC<{ combo: number }> = ({ combo }) => {
         animate={{ scale: 1, opacity: 1, rotate: -6 }}
         transition={{ delay: 0.08, type: 'spring', stiffness: 480, damping: 13 }}
       >
-        <span className="hype-quake hype-shout text-[8rem] md:text-[13rem] leading-none">{combo}</span>
-        <span className="hype-shout hype-shout-red text-5xl md:text-7xl">COMBO!!</span>
+        <GlyphText text={String(combo)} cls="hype-quake hype-shout text-[8rem] md:text-[13rem] leading-none" />
+        <GlyphText text="COMBO!!" cls="hype-shout hype-shout-red text-5xl md:text-7xl" />
       </motion.div>
     </motion.div>
   );
@@ -219,6 +241,7 @@ const FeverCutin: React.FC = () => {
         transition={{ delay: 0.8, duration: 0.2 }}
       />
       <BigPoses delay={0.95} />
+      <Shatter delay={1.6} />
       <div className="relative flex flex-col items-center">
         <SlamLetters text="FEVER!!" cls="hype-shout hype-shout-rainbow text-7xl md:text-[11rem] leading-none" delay={1.6} step={0.08} />
         <motion.span
@@ -245,6 +268,7 @@ const FeverStageCutin: React.FC<{ stage: number }> = ({ stage }) => (
       animate={{ scaleX: 1 }}
       transition={{ duration: 0.16 }}
     />
+    <Shatter />
     <BigChars motionName="feverDance" size="w-[34%] h-[85%]" />
     <div className="relative flex flex-col items-center">
       <SlamLetters text={`×${RULES.fever.mult[stage]}`} cls="hype-quake hype-shout hype-shout-rainbow text-[8rem] md:text-[14rem] leading-none" step={0.1} />
@@ -383,7 +407,7 @@ export const CountdownLayer: React.FC<{ phase: CountPhase }> = ({ phase }) => (
         >
           {/* アニメは外側、傾きは内側（傾きがアニメで消えないように） */}
           <div style={{ transform: `rotate(${COUNT_STYLE[String(phase)].rot}deg)` }}>
-            <span className={COUNT_STYLE[String(phase)].cls}>{COUNT_STYLE[String(phase)].text}</span>
+            <GlyphText text={COUNT_STYLE[String(phase)].text} cls={COUNT_STYLE[String(phase)].cls} />
           </div>
         </motion.div>
       )}

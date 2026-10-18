@@ -36,7 +36,7 @@ API は使わない。Gemini の Web 画面を Claude in Chrome（ユーザー�
 | `boxes(cv, {white, minGap})` | 白い余白で区切られた絵の位置（余白がせまいときは `white: 245, minGap: 3`） |
 | `crop(cv, box, inset)` / `trim(cv)` / `square(cv)` | 切り出し・切りつめ・正方形に余白を足す |
 | `cutout(cv, {tol})` | ふちから白をたどって透明に（tol 30〜40） |
-| `dotSize(cv)` | 1ドットの大きさ（色の変わり目の間かく）。ページ上で定義して使う（下の例） |
+| `dotSize(cv)` | 1ドットの大きさの候補（色の変わり目の間かくの多い順） |
 | `pixelate(cv, w, h, core)` | 本物のドットに縮める（各マスの中央の平均色） |
 | `hardAlpha(cv)` | 半透明をなくす |
 | `tile(cv, 3)` / `show(cv, label, zoom)` | くり返しの見え方を確かめる・画面に並べる |
@@ -46,10 +46,12 @@ API は使わない。Gemini の Web 画面を Claude in Chrome（ユーザー�
 - タイル：`pixelate(crop(cv, box, 4), 16)`（細かい絵は 32）
 - 粒：`hardAlpha(pixelate(square(trim(cutout(crop(...), {tol: 40}))), 20))`
 - 枠・キャラの絵：`cutout` → `trim` → `dotSize` で1ドットの大きさを見て、幅と高さをその値で割ったドット数に `pixelate`
+- 文字のシート：`glyphs('glyphs1.jpg', 'CALRFTEVO')`（3×3 の順に文字を並べて渡す。O や A の穴も透明になる）。
+  シートごとに色がずれたら、そろっているシートの画像を添えて「まったく同じデザインで」と頼み直す。
 
 ## 4. 取りこむ
 
-- `src/assets/hype/{tiles,parts,ui,pose}/名前.png` に置き、型の名前を `src/lib/hype/assets.ts` に足す（`import.meta.glob` で自動で読む）。
+- `src/assets/hype/{tiles,parts,ui,pose,glyphs,gacha}/名前.png` に置き、型の名前を `src/lib/hype/assets.ts` に足す（`import.meta.glob` で自動で読む）。
 - 表示は `image-rendering: pixelated` で拡大する。
 - 確認：`npm run build`、聖域の自動チェック（`ok: true`）、画面のスクリーンショット。
 - 終わったら Chrome のタブと加工台のサーバーを閉じる。

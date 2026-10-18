@@ -8,6 +8,7 @@ import { Button } from '../ui/Button';
 import { FxHandle } from './FxCanvas';
 import { PixelChar, PixelCharHandle } from './PixelChar';
 import { PraiseBubble, PraiseBubbleHandle } from './PraiseBubble';
+import { GlyphText } from './GlyphText';
 import { HypeSummary } from './HypePlayingScreen';
 import { challengeNextRankInfo, challengeRankOf, nextRankInfo, rankOf, rankScore, xpOfPlay } from '../../lib/hype/engine';
 import { levelInfo, ROULETTE, spinRoulette } from '../../lib/hype/skills';
@@ -425,7 +426,7 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
                   className={cn('hype-rank w-36 h-36 flex flex-col items-center justify-center', RANK_STYLE[rank])}
                 >
                   <span className="text-[10px] tracking-widest">RANK</span>
-                  <span className={rank.length >= 3 ? 'text-4xl' : 'text-6xl'}>{rank}</span>
+                  <GlyphText text={rank} cls={rank.length >= 3 ? 'text-4xl' : 'text-6xl'} />
                 </motion.div>
               )}
             </AnimatePresence>

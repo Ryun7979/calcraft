@@ -10,6 +10,7 @@ import { Panel } from '../ui/Panel';
 import { FxHandle } from './FxCanvas';
 import { BattleField, BattleHandle } from './BattleField';
 import { BlockRain } from './BlockRain';
+import { Glyph, GlyphTone } from './GlyphText';
 import { hypeAudio } from '../../lib/hype/audio';
 import { pickPraise } from '../../lib/hype/praise';
 import { levelInfo, skillPoints } from '../../lib/hype/skills';
@@ -41,7 +42,7 @@ interface Props {
 const COUNTS: QuestionCount[] = [4, 10, 20];
 const MINUTES: ChallengeMinutes[] = [1, 2, 3];
 const LOGO = 'CALCRAFT'.split('');
-const LOGO_COLORS = ['#ff5a5a', '#ffb84d', '#ffe14d', '#7dff6a', '#4dd2ff', '#b47dff', '#ff8fb1', '#ffe14d'];
+const LOGO_TONES: GlyphTone[] = ['red', 'orange', 'gold', 'green', 'blue', 'purple', 'pink', 'gold'];
 const TAPE = '★ 算数でゾンビをやっつけろ！ ★ ほめほめ MAX!! ★ ブロッくんとブロッちゃんが応援してるよ！ ★ 何をしてもほめちゃう！ ';
 
 export const HypeMenuScreen: React.FC<Props> = (props) => {
@@ -122,12 +123,11 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
           {LOGO.map((ch, i) => (
             <motion.span
               key={i}
-              className="mc-title text-5xl md:text-7xl"
-              style={{ color: LOGO_COLORS[i], textShadow: '5px 5px 0 #1d1209, 9px 9px 0 rgba(0,0,0,0.35)' }}
+              className="inline-flex text-6xl md:text-8xl leading-none"
               animate={{ y: [0, -22, 0], rotate: [0, i % 2 ? 8 : -8, 0], scale: [1, 1.12, 1] }}
               transition={{ duration: 0.9, repeat: Infinity, delay: i * 0.09, ease: 'easeInOut' }}
             >
-              {ch}
+              <Glyph ch={ch} tone={LOGO_TONES[i]} />
             </motion.span>
           ))}
         </div>

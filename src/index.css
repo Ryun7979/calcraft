@@ -373,6 +373,21 @@ body {
 .hype-glow {
   filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 14px #ffe14d) drop-shadow(0 0 28px #ffffff);
 }
+/* ブロック文字の絵（Gemini 製・金）。高さは文字の大きさに合わせる */
+.hype-glyph {
+  height: 1em;
+  width: auto;
+  image-rendering: pixelated;
+  margin: 0 -0.02em;
+}
+.hype-glyph-rainbow {
+  animation: hype-glyph-hue 1.2s linear infinite;
+}
+@keyframes hype-glyph-hue {
+  from { filter: hue-rotate(0deg) saturate(1.4) drop-shadow(0.06em 0.06em 0 rgba(29, 18, 9, 0.6)); }
+  to { filter: hue-rotate(360deg) saturate(1.4) drop-shadow(0.06em 0.06em 0 rgba(29, 18, 9, 0.6)); }
+}
+
 /* 決めポーズの絵（ドットのまま拡大し、ぴょこぴょこはずむ） */
 .hype-pose {
   image-rendering: pixelated;
@@ -498,22 +513,18 @@ body {
 }
 
 /* ---- P3：ガチャのカプセル（色はレア度：白 → 青 → 金 → にじ） ---- */
-.hype-capsule {
-  border: 6px solid #1d1209;
-  border-radius: 50%;
-  background: linear-gradient(180deg, var(--cap, #ffffff) 0 50%, #f4f4f4 50% 100%);
-  box-shadow: inset -10px -10px 0 rgba(0, 0, 0, 0.18), inset 10px 10px 0 rgba(255, 255, 255, 0.45), 0 0 40px var(--cap-glow, transparent);
-  transition: box-shadow 0.3s;
+/* カプセルの絵（Gemini 製）。レア度の色で光らせる */
+.hype-capsule-img {
+  background: center / contain no-repeat;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 18px var(--cap-glow, transparent)) drop-shadow(0 0 36px var(--cap-glow, transparent));
 }
-.hype-capsule-rainbow {
-  --cap: #ff4d4d;
-  background: linear-gradient(180deg, transparent 0 50%, #f4f4f4 50% 100%), linear-gradient(90deg, #ff4d4d, #ffb84d, #fff14d, #5dff6a, #4dd2ff, #b44dff, #ff4d4d);
-  background-size: 100% 100%, 200% 100%;
-  animation: hype-capsule-rainbow 1s linear infinite;
+.hype-capsule-img-rainbow {
+  animation: hype-capsule-img-glow 0.8s linear infinite;
 }
-@keyframes hype-capsule-rainbow {
-  from { background-position: 0 0, 0% 0; }
-  to { background-position: 0 0, 200% 0; }
+@keyframes hype-capsule-img-glow {
+  from { filter: drop-shadow(0 0 18px #ff4dff) drop-shadow(0 0 36px #ffe14d) hue-rotate(0deg); }
+  to { filter: drop-shadow(0 0 18px #ff4dff) drop-shadow(0 0 36px #ffe14d) hue-rotate(360deg); }
 }
 /* レア度の文字・ふち */
 .hype-rarity-N { background: #9a9a9a; color: #fff; }
