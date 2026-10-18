@@ -33,6 +33,8 @@ export interface HypeSummary {
   mode: PlayMode;
   minutes: ChallengeMinutes;
   mods: Mods;
+  /** プレイを始めた時刻（休けいのお知らせ用） */
+  startedAt: number;
 }
 
 interface Props {
@@ -56,6 +58,8 @@ interface Props {
   holdRef: React.MutableRefObject<(() => boolean) | null>;
   /** スキルの効き目（1プレイのあいだは変わらない） */
   mods: Mods;
+  /** 背景に重ねるクラス（ガチャの「背景」）。空ならいつもの石 */
+  bgClass?: string;
 }
 
 const center = (el: Element | null | undefined) => {
@@ -301,7 +305,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
     const perfect = challenge
       ? perfectScore(challengeParAnswers(questions, props.challengeMinutes * 60), mods)
       : perfectScore(questions.map((q) => q.answer), mods);
-    summaryRef.current = { state: hype.current, perfect, defeated: 0, mode: props.playMode, minutes: props.challengeMinutes, mods };
+    summaryRef.current = { state: hype.current, perfect, defeated: 0, mode: props.playMode, minutes: props.challengeMinutes, mods, startedAt: Date.now() };
 
     const seq: CountPhase[] = ['yoi', 3, 2, 1, 'go'];
     let t = 0;
@@ -571,6 +575,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
     <motion.div key="hype-playing" {...pageTransition} className="w-full h-full relative overflow-hidden">
       {/* 背景（コンボで加速、FEVER で虹色） */}
       <div className="absolute inset-0 bg-stone hype-bg-scroll opacity-70" style={{ ['--hype-bg-speed' as string]: bgSpeed }} />
+      {props.bgClass && <div className={`absolute inset-0 pointer-events-none ${props.bgClass}`} />}
       {feverOn && <div className={`absolute inset-0 pointer-events-none ${mods.galaxy ? 'hype-fever-galaxy' : 'hype-fever-wash'}`} />}
       {bonusOn && <div className="absolute inset-0 hype-bonus-wash pointer-events-none" />}
       {/* コンボ段階2以上・FEVER 中は、背景で光線が回る（段階が上がるほど濃く速く） */}

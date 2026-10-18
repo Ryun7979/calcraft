@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
-import { EffectIntensity, EffectMode, Settings } from '../types';
+import { EffectIntensity, EffectMode, RestMinutes, Settings } from '../types';
 import { cn } from '../lib/utils';
 import { Button } from './ui/Button';
 import { Panel } from './ui/Panel';
@@ -21,6 +21,14 @@ const INTENSITIES: { value: EffectIntensity; label: string }[] = [
   { value: 'low', label: 'ひかえめ' },
   { value: 'normal', label: 'ふつう' },
   { value: 'max', label: 'MAX' },
+];
+
+const RESTS: { value: RestMinutes; label: string }[] = [
+  { value: 0, label: 'なし' },
+  { value: 15, label: '15分' },
+  { value: 30, label: '30分' },
+  { value: 45, label: '45分' },
+  { value: 60, label: '60分' },
 ];
 
 const Row: React.FC<{ title: string; note?: string; children: React.ReactNode; disabled?: boolean }> = ({ title, note, children, disabled }) => (
@@ -101,6 +109,20 @@ export const OptionsDialog: React.FC<Props> = ({ settings, onChange, onClose }) 
               className="flex-1 h-12 text-lg"
             >
               {on ? 'オン' : 'オフ'}
+            </Button>
+          ))}
+        </Row>
+
+        <Row title="休けいのお知らせ" note="続けて遊んだ時間がこえたら、プレイの終わりにキャラが声をかける" disabled={!hype}>
+          {RESTS.map((r) => (
+            <Button
+              key={r.value}
+              variant={settings.restMinutes === r.value ? 'green' : 'default'}
+              onClick={() => onChange({ restMinutes: r.value })}
+              disabled={!hype}
+              className="flex-1 h-12 text-lg"
+            >
+              {r.label}
             </Button>
           ))}
         </Row>

@@ -38,6 +38,8 @@ export interface FxHandle {
   setIntensity(p: IntensityProfile): void;
   /** 花火にまぜる形（スキル「ほし花火」「ハート花火」）。空ならいつもの丸 */
   setFireworkShapes(shapes: readonly FireworkShape[]): void;
+  /** パーティクル・紙ふぶきの色（ガチャの「エフェクト」）。null でいつもの色 */
+  setPalette(colors: readonly string[] | null): void;
   clear(): void;
 }
 
@@ -128,6 +130,7 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
     speedLines: 0,
     fever: -1,
     shapes: [] as readonly FireworkShape[],
+    palette: null as readonly string[] | null,
     converge: { start: 0, ms: 0 },
     w: 0,
     h: 0,
@@ -145,7 +148,7 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
     const api: FxHandle = {
       burst(x, y, o = {}) {
         const n = scaled(o.count ?? 16);
-        const colors = o.colors ?? PALETTE.pixel;
+        const colors = o.colors ?? s.palette ?? PALETTE.pixel;
         for (let i = 0; i < n; i++) {
           const a = Math.random() * Math.PI * 2;
           const sp = (o.speed ?? 6) * (0.4 + Math.random() * 0.8);
@@ -193,7 +196,7 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
             vy: 2 + Math.random() * 4,
             g: 0.05,
             size: 8 + Math.random() * 6,
-            color: PALETTE.rainbow[i % PALETTE.rainbow.length],
+            color: (s.palette ?? PALETTE.rainbow)[i % (s.palette ?? PALETTE.rainbow).length],
             life: 3,
             max: 3,
           });
@@ -232,6 +235,9 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
       },
       setFireworkShapes(shapes) {
         s.shapes = shapes;
+      },
+      setPalette(colors) {
+        s.palette = colors && colors.length ? colors : null;
       },
       ring(x, y, color = '#ffffff', maxR = 160) {
         if (s.rings.length > 24) s.rings.shift();

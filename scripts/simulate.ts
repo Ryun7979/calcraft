@@ -147,3 +147,63 @@ for (const sk of SKILLS_LIST) {
     `${sk.name.padEnd(6, '　')} | ${String(pct(per, 0.5)).padStart(5)} | ${(gold.reduce((a, b) => a + b, 0) / RUNS).toFixed(2).padStart(5)} | ${Math.round((changed / RUNS) * 100)}% | ${med(() => playsTo(2))} | ${med(() => playsTo(5))} | ${med(() => playsTo(10))} | ${med(() => playsTo(full))} | ${levelInfo(xp50).level}`,
   );
 }
+
+// --- P3/P4：コイン・ガチャ・デイリー。1日3回（れんしゅう 10問・答え 2 桁）遊ぶ想定で、毎日つづける ---
+// 「何回遊ぶと全部そろうか」。かけらは10個たまったら、まだ持っていない中でいちばんレア度の高いものと交換する
+import { coinsOfPlay } from '../src/lib/hype/rewards';
+import { advanceDaily, advanceStreak, DailyState, StreakState } from '../src/lib/hype/daily';
+import { exchangeShards, GACHA_ITEMS, GachaState, pullGacha, RARITIES } from '../src/lib/hype/collection';
+import { RULES } from '../src/lib/hype/rules';
+
+const PER_DAY = 3;
+const dayKey = (n: number) => {
+  const d = new Date(2026, 0, 1 + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+const collect = (acc: number, sec: number) => {
+  const g: GachaState = { coins: 0, items: [], shards: 0, pity: 0 };
+  let daily: DailyState | undefined;
+  let streak: StreakState = { last: '', count: 0, best: 0 };
+  let firstSR = 0;
+  let half = 0;
+  let coinsTotal = 0;
+  let pulls = 0;
+  for (let n = 1; n <= 2000; n++) {
+    const today = dayKey(Math.floor((n - 1) / PER_DAY));
+    const s = playOnce(acc, sec, 10, getMods([]));
+    const perfect10 = perfectScore(Array.from({ length: 10 }, () => 10));
+    const rankIndex = RULES.rank.findIndex((r) => r.name === rankOf(rankScore(s), perfect10, 10));
+    const st = advanceStreak(streak, today);
+    streak = st.streak;
+    const dl = advanceDaily(daily, today, {
+      mode: 'practice', correct: s.correct, total: 10, maxCombo: s.maxCombo, feverCount: s.feverCount,
+      goldenCleared: s.goldenCleared, defeated: s.correct, rankIndex,
+    });
+    daily = dl.daily;
+    const got = coinsOfPlay(s.reward) + dl.coins + st.coins;
+    g.coins += got;
+    coinsTotal += got;
+    while (g.coins >= RULES.gacha.cost) {
+      const r = pullGacha(g, rnd)!;
+      pulls++;
+      if (!firstSR && (r.rarity === 'SR' || r.rarity === 'SSR')) firstSR = n;
+    }
+    while (g.shards >= RULES.gacha.shardsPerItem) {
+      const want = [...GACHA_ITEMS].reverse().find((x) => !g.items.includes(x.id));
+      if (!want || !exchangeShards(g, want.id)) break;
+    }
+    if (!half && g.items.length >= GACHA_ITEMS.length / 2) half = n;
+    if (g.items.length >= GACHA_ITEMS.length) return { firstSR, half, all: n, coinsPerPlay: coinsTotal / n, pullsPerPlay: pulls / n };
+  }
+  return { firstSR, half, all: 2000, coinsPerPlay: coinsTotal / 2000, pullsPerPlay: pulls / 2000 };
+};
+
+console.log(`\n=== コイン・ガチャ（1日${PER_DAY}回・れんしゅう 10問）。ガチャ ${RULES.gacha.cost} コイン・${GACHA_ITEMS.length}種（${RARITIES.map((r) => `${r} ${RULES.gacha.rates[r]}%`).join(' / ')}）・天井 ${RULES.gacha.pity} 回 ===`);
+console.log('腕前      | コイン/回 | ガチャ/回 | はじめての SR 以上（回目） | 半分そろう | 全部そろう | 全部そろう日数');
+for (const sk of SKILLS_LIST) {
+  const res = Array.from({ length: 101 }, () => collect(sk.acc, sk.sec));
+  const m = (f: (r: (typeof res)[number]) => number) => pct(res.map(f), 0.5);
+  console.log(
+    `${sk.name.padEnd(6, '　')} | ${m((r) => r.coinsPerPlay).toFixed(0).padStart(5)} | ${m((r) => r.pullsPerPlay).toFixed(2).padStart(5)} | ${String(m((r) => r.firstSR)).padStart(4)} | ${String(m((r) => r.half)).padStart(4)} | ${String(m((r) => r.all)).padStart(4)} (${pct(res.map((r) => r.all), 0.1)}-${pct(res.map((r) => r.all), 0.9)}) | ${Math.ceil(m((r) => r.all) / PER_DAY)}日`,
+  );
+}

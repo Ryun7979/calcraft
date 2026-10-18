@@ -107,6 +107,21 @@ interface Skin {
   face?: (p: CharPose, hx: number, hy: number) => string;
 }
 
+/** 衣装（ガチャ・P3）：ブロッくん・ブロッちゃんの色を上書きする。ゾンビには効かない */
+export type CostumeColors = Partial<Pick<Skin, 'shirt' | 'shirtDark' | 'pants' | 'shoe' | 'skirt'>>;
+export interface Costume {
+  boy?: CostumeColors;
+  girl?: CostumeColors;
+  /** 頭に王かんをのせる */
+  crown?: boolean;
+}
+
+let currentCostume: Costume = {};
+/** いま装備している衣装（どの画面のキャラにも効く）。App が装備に合わせて呼ぶ */
+export const setCostume = (c: Costume | undefined) => {
+  currentCostume = c ?? {};
+};
+
 const r = (x: number, y: number, w: number, h: number, fill: string) =>
   `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="${fill}"/>`;
 
@@ -323,8 +338,10 @@ const renderAura = (p: CharPose, topY: number) => {
 };
 
 /** pose → SVG の中身（<svg> の内側に入れる文字列） */
-export const renderCharacter = (id: CharacterId, p: CharPose): string => {
-  const skin = SKINS[id];
+export const renderCharacter = (id: CharacterId, p: CharPose, costume: Costume = currentCostume): string => {
+  const over = id === 'zombie' ? undefined : costume[id];
+  const skin: Skin = over ? { ...SKINS[id], ...over } : SKINS[id];
+  const crown = id !== 'zombie' && !!costume.crown;
   const legH = skin.legH ?? 4;
   const bodyH = skin.bodyH ?? 6;
   const legLenL = legH * p.legL;
@@ -365,6 +382,14 @@ export const renderCharacter = (id: CharacterId, p: CharPose): string => {
   // 頭
   body += renderHead(skin, p, -6, headTop);
   if (skin.front) body += skin.front(p, headTop);
+  if (crown)
+    // 王かん（頭の上・まん中）
+    body +=
+      block(-3, headTop - 2, 6, 2, '#ffd23c') +
+      block(-3, headTop - 4, 1, 2, '#ffd23c') +
+      block(-0.5, headTop - 4, 1, 2, '#ffd23c') +
+      block(2, headTop - 4, 1, 2, '#ffd23c') +
+      r(-0.5, headTop - 1.5, 1, 1, '#ff3060');
   // 白く光る：同じ形を白でぬって上に重ねる
   if (p.flash > 0) body += `<g opacity="${clamp01(p.flash).toFixed(2)}">${body.replace(/fill="[^"]+"/g, 'fill="#ffffff"')}</g>`;
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Play, Timer, Pencil, SlidersHorizontal, Sparkles, Check } from 'lucide-react';
+import { Play, Timer, Pencil, SlidersHorizontal, Sparkles, Check, Coins, Gift, BookOpen, Flame, CircleCheck, Circle } from 'lucide-react';
 import { ChallengeMinutes, Grade, Operation, PlayMode, QuestionCount } from '../../types';
 import { OP_NAMES, GRADE_OPERATIONS, pageTransition } from '../../constants';
 import { DIFFICULTY_INFO } from '../../constants/difficulty';
@@ -15,6 +15,11 @@ import { pickPraise } from '../../lib/hype/praise';
 import { levelInfo, skillPoints } from '../../lib/hype/skills';
 import { Progress } from '../../lib/storage';
 import { HypeSkillDialog } from './HypeSkillDialog';
+import { HypeGachaDialog } from './HypeGachaDialog';
+import { HypeZukanDialog } from './HypeZukanDialog';
+import { dailyFor, dateKey, missionById, missionText, streakNow } from '../../lib/hype/daily';
+import { collectionCount, ITEMS } from '../../lib/hype/collection';
+import { RULES } from '../../lib/hype/rules';
 
 interface Props {
   selectedGrade: Grade;
@@ -46,8 +51,14 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
   /** メニューは2階層：top（いまの設定・スタート・えらぶ・スキル）→ select（レベル・計算・モードをえらぶ） */
   const [view, setView] = useState<'top' | 'select'>('top');
   const [skillOpen, setSkillOpen] = useState(false);
+  const [gachaOpen, setGachaOpen] = useState(false);
+  const [zukanOpen, setZukanOpen] = useState(false);
   const lv = levelInfo(props.progress.xp);
   const points = Math.max(0, skillPoints(props.progress.xp, props.progress.skills));
+  const today = dateKey(new Date());
+  const daily = dailyFor(props.progress.daily, today);
+  const streak = streakNow(props.progress.streak, today);
+  const canPull = props.progress.coins >= RULES.gacha.cost;
 
   useEffect(() => {
     hypeAudio.playBgm('title');
@@ -149,6 +160,39 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
               <span className="text-base lg:text-lg text-gray-200 whitespace-nowrap">
                 次のレベルまで <span className="text-yellow-300 font-bold">{(lv.need - lv.into).toLocaleString()}</span>
               </span>
+              <span className="hype-golden-tag px-2 text-base lg:text-lg flex items-center gap-1 whitespace-nowrap">
+                <Coins className="w-5 h-5" />
+                {props.progress.coins.toLocaleString()}
+              </span>
+              {streak > 0 && (
+                <span className="text-base lg:text-lg font-bold text-orange-300 flex items-center gap-1 whitespace-nowrap">
+                  <Flame className="w-5 h-5" />
+                  {streak}日連続
+                </span>
+              )}
+            </Panel>
+
+            {/* きょうのミッション（1日3つ） */}
+            <Panel className="!py-1.5 !px-4 flex items-center gap-3">
+              <span className="text-base lg:text-lg font-bold text-yellow-300 whitespace-nowrap">きょうのミッション</span>
+              <div className="flex-1 grid grid-cols-3 gap-2">
+                {daily.missions.map((m) => {
+                  const def = missionById(m.id);
+                  if (!def) return null;
+                  return (
+                    <span key={m.id} className={cn('flex items-center gap-1 text-sm lg:text-base font-bold whitespace-nowrap', m.done ? 'text-green-300' : 'text-gray-100')}>
+                      {m.done ? <CircleCheck className="w-4 h-4 shrink-0" /> : <Circle className="w-4 h-4 shrink-0" />}
+                      <span className="truncate">{missionText(def)}</span>
+                      {!m.done && def.target > 1 && (
+                        <span className="text-yellow-300">
+                          {m.count}/{def.target}
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
+              </div>
+              <span className="text-xs lg:text-sm text-gray-300 whitespace-nowrap">1つ +{RULES.daily.reward}／全部で +{RULES.daily.allBonus}</span>
             </Panel>
 
             {/* いまの設定（このまま「あそぶ」で始められる） */}
@@ -169,7 +213,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
               </div>
             </Panel>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-4 gap-3">
               <Button
                 onClick={(e) => {
                   praise(e);
@@ -190,7 +234,31 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
               >
                 <Sparkles className="w-7 h-7" />
                 スキル
-                {points > 0 && <span className="hype-golden-tag px-2 text-lg">ポイント {points}</span>}
+                {points > 0 && <span className="hype-golden-tag px-2 text-lg">{points}</span>}
+              </Button>
+              <Button
+                variant={canPull ? 'orange' : 'default'}
+                onClick={(e) => {
+                  praise(e);
+                  setGachaOpen(true);
+                }}
+                className={cn('h-14 lg:h-16 text-2xl lg:text-3xl gap-3 whitespace-nowrap', canPull && 'hype-start')}
+              >
+                <Gift className="w-7 h-7" />
+                ガチャ
+              </Button>
+              <Button
+                onClick={(e) => {
+                  praise(e);
+                  setZukanOpen(true);
+                }}
+                className="h-14 lg:h-16 text-2xl lg:text-3xl gap-3 whitespace-nowrap"
+              >
+                <BookOpen className="w-7 h-7" />
+                ずかん
+                <span className="text-base lg:text-lg text-gray-200">
+                  {collectionCount(props.progress.items)}/{ITEMS.length}
+                </span>
               </Button>
             </div>
           </div>
@@ -339,6 +407,22 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
             }}
             onClose={() => setSkillOpen(false)}
           />
+        )}
+        {gachaOpen && (
+          <HypeGachaDialog
+            progress={props.progress}
+            updateProgress={props.updateProgress}
+            fx={fx}
+            onResult={(r) => {
+              battleRef.current?.say(r.dup ? 'かけらゲット！' : `「${r.item.name}」が出た！`, true, 'boy');
+              battleRef.current?.say(r.rarity === 'SSR' ? 'すごすぎる！！' : r.rarity === 'SR' ? 'やったね！' : 'いいね！', true, 'girl');
+              battleRef.current?.play('jump');
+            }}
+            onClose={() => setGachaOpen(false)}
+          />
+        )}
+        {zukanOpen && (
+          <HypeZukanDialog progress={props.progress} updateProgress={props.updateProgress} fx={fx} onClose={() => setZukanOpen(false)} />
         )}
       </AnimatePresence>
     </motion.div>

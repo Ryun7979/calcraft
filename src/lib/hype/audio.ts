@@ -102,6 +102,16 @@ const midiHz = (m: number) => 440 * Math.pow(2, (m - 69) / 12);
 // 操作音の音階（ペンタトニック。1オクターブでループ）
 const KEY_SCALE = [72, 74, 76, 79, 81, 84, 86, 88];
 
+/** 操作音・正解音の音色（ガチャの「音」）。collection.ts の SoundPack と同じ形 */
+export interface SoundPack {
+  wave: OscillatorType;
+  shift: number;
+  double?: boolean;
+}
+const DEFAULT_PACK: SoundPack = { wave: 'square', shift: 0 };
+/** 音色ごとの聞こえ方の差をそろえる（のこぎり波は大きく、正弦波は小さく聞こえる） */
+const WAVE_VOL: Partial<Record<OscillatorType, number>> = { square: 1, triangle: 1.4, sine: 1.5, sawtooth: 0.6 };
+
 class HypeAudio {
   private ctx: AudioContext | null = null;
   private master!: GainNode;
@@ -116,6 +126,12 @@ class HypeAudio {
   private nextTime = 0;
   private timer: number | null = null;
   private duckUntil = 0;
+  private pack: SoundPack = DEFAULT_PACK;
+
+  /** 操作音・正解音の音色を変える（null でいつもの音） */
+  setSoundPack(p: SoundPack | null | undefined) {
+    this.pack = p ?? DEFAULT_PACK;
+  }
 
   /** ブラウザは操作のあとでないと音を出せないので、最初の操作で呼ぶ */
   unlock() {
@@ -269,10 +285,12 @@ class HypeAudio {
   /** 数字を打った。n が増えるほど音階が上がる（1オクターブでループ） */
   key(n: number) {
     if (!this.ready()) return;
-    const m = KEY_SCALE[n % KEY_SCALE.length];
+    const p = this.pack;
+    const v = WAVE_VOL[p.wave] ?? 1;
+    const m = KEY_SCALE[n % KEY_SCALE.length] + p.shift;
     const t = this.ctx!.currentTime + 0.005;
-    this.tone(this.sfxBus, 'square', midiHz(m), t, 0.09, 0.22);
-    this.tone(this.sfxBus, 'square', midiHz(m + 12), t + 0.03, 0.06, 0.08);
+    this.tone(this.sfxBus, p.wave, midiHz(m), t, 0.09, 0.22 * v);
+    this.tone(this.sfxBus, p.wave, midiHz(m + 12), t + 0.03, 0.06, (p.double ? 0.16 : 0.08) * v);
   }
 
   erase() {
@@ -291,7 +309,11 @@ class HypeAudio {
     this.duck(0.6);
     const base = [72, 76, 79, 84];
     const extra = level >= 2 ? [88, 91] : [];
-    this.arp([...base, ...extra].map((n) => n + Math.min(level, 4) * 2), 0.05, 0.16, 0.3);
+    const p = this.pack;
+    const v = WAVE_VOL[p.wave] ?? 1;
+    const notes = [...base, ...extra].map((n) => n + Math.min(level, 4) * 2 + p.shift);
+    this.arp(notes, 0.05, 0.16, 0.3 * v, p.wave);
+    if (p.double) this.arp(notes.map((n) => n + 12), 0.05, 0.12, 0.12 * v, p.wave);
     this.noise(this.sfxBus, this.ctx!.currentTime + 0.05, 0.25, 0.06, 6000);
   }
 
@@ -463,6 +485,61 @@ class HypeAudio {
     const t = this.ctx!.currentTime;
     this.kick(this.sfxBus, t, 0.7);
     this.arp([72, 76, 79, 84, 79, 84, 88, 91, 96], 0.07, 0.28, 0.27);
+  }
+
+  /** 音色のためし聞き（図鑑） */
+  sample(p: SoundPack) {
+    if (!this.ready()) return;
+    const keep = this.pack;
+    this.pack = p;
+    [0, 1, 2].forEach((i) => window.setTimeout(() => this.key(i * 2), i * 110));
+    window.setTimeout(() => {
+      this.correct(1);
+      this.pack = keep;
+    }, 380);
+  }
+
+  /** ガチャ：コインを入れてハンドルを回す */
+  gachaTurn() {
+    if (!this.ready()) return;
+    const t = this.ctx!.currentTime;
+    for (let i = 0; i < 6; i++) this.tone(this.sfxBus, 'square', 300 + i * 40, t + i * 0.07, 0.05, 0.12);
+    this.noise(this.sfxBus, t + 0.45, 0.12, 0.2, 800);
+  }
+
+  /** ガチャ：カプセルが落ちる・ゆれる */
+  capsuleDrop() {
+    if (!this.ready()) return;
+    const t = this.ctx!.currentTime;
+    this.tone(this.sfxBus, 'square', 900, t, 0.25, 0.15, 200);
+    this.kick(this.sfxBus, t + 0.25, 0.6);
+  }
+  capsuleShake() {
+    if (!this.ready()) return;
+    const t = this.ctx!.currentTime;
+    this.noise(this.sfxBus, t, 0.05, 0.12, 2500);
+    this.noise(this.sfxBus, t + 0.09, 0.05, 0.12, 2500);
+  }
+  /** ガチャ：カプセルの色が1段上がる（step が大きいほど高い） */
+  capsuleUp(step: number) {
+    if (!this.ready()) return;
+    this.arp([72, 79, 84].map((n) => n + step * 4), 0.05, 0.14, 0.24);
+  }
+  /** ガチャ：中身が出た。rarity 0〜3 */
+  gachaReveal(rarity: number) {
+    if (!this.ready()) return;
+    this.duck(1.5 + rarity);
+    const t = this.ctx!.currentTime;
+    this.kick(this.sfxBus, t, 0.7);
+    this.noise(this.sfxBus, t, 0.4, 0.2, 3000);
+    const runs = [[72, 79, 84], [72, 76, 79, 84, 88], [72, 76, 79, 84, 88, 91, 96], [60, 64, 67, 72, 76, 79, 84, 88, 91, 96, 100]];
+    this.arp(runs[rarity] ?? runs[0], 0.06, 0.3, 0.26);
+    if (rarity >= 3) window.setTimeout(() => this.arp([96, 100, 103, 108], 0.09, 0.5, 0.2), 900);
+  }
+  /** ミッション達成・コインが入った */
+  coin() {
+    if (!this.ready()) return;
+    this.arp([88, 95], 0.06, 0.18, 0.2);
   }
 }
 

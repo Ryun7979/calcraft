@@ -18,6 +18,8 @@ import { getMods } from './lib/hype/skills';
 import { setPraisePlus } from './lib/hype/praise';
 import { INTENSITY, RULES } from './lib/hype/rules';
 import { hypeAudio } from './lib/hype/audio';
+import { getEquipped, STARTER } from './lib/hype/collection';
+import { setCostume } from './lib/hype/characters';
 import { playClickSound } from './lib/audio';
 
 export default function App() {
@@ -70,13 +72,24 @@ export default function App() {
   const [progress, setProgress] = useState<Progress>(() => loadSave().progress);
   const mods = useMemo(() => getMods(progress.skills), [progress.skills]);
   const updateProgress = useCallback((fn: (p: Progress) => void) => {
-    const next = mutateSave((d) => fn(d.progress)).progress;
-    setProgress({ ...next, skills: [...next.skills] });
+    // 保存データは毎回読み直したもの（mutateSave の中の新しいオブジェクト）なので、そのまま state にしてよい
+    setProgress(mutateSave((d) => fn(d.progress)).progress);
   }, []);
   useEffect(() => {
     fxRef.current?.setFireworkShapes(mods.fireworkShapes);
     setPraisePlus(hype && mods.praisePlus);
   }, [mods, hype]);
+
+  // 装備（ガチャ・図鑑）：衣装はキャラに、エフェクトは演出の色に、音は操作音に効かせる。背景はプレイ画面へ渡す
+  const equippedCostume = getEquipped(progress.equipped, progress.items, 'costume');
+  const equippedEffect = getEquipped(progress.equipped, progress.items, 'effect');
+  const equippedSound = getEquipped(progress.equipped, progress.items, 'sound');
+  const equippedBg = getEquipped(progress.equipped, progress.items, 'bg');
+  useEffect(() => {
+    setCostume(hype ? equippedCostume.costume : undefined);
+    fxRef.current?.setPalette(equippedEffect.id === STARTER.effect ? null : (equippedEffect.colors ?? null));
+    hypeAudio.setSoundPack(equippedSound.sound);
+  }, [hype, equippedCostume, equippedEffect, equippedSound]);
 
   // ブラウザは操作のあとでないと音を出せないので、最初の操作で音を準備する
   useEffect(() => {
@@ -175,6 +188,7 @@ export default function App() {
               summaryRef={summaryRef}
               holdRef={holdRef}
               mods={mods}
+              bgClass={equippedBg.bgClass}
             />
           )}
 
@@ -194,6 +208,7 @@ export default function App() {
               backToMenu={backToMenu}
               progress={progress}
               updateProgress={updateProgress}
+              restMinutes={settings.restMinutes}
             />
           )}
         </AnimatePresence>

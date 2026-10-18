@@ -431,3 +431,69 @@ body {
   from { background-position: 0 0, 0 0, 0 0, 0% 50%; }
   to { background-position: 120px 240px, -170px 170px, 230px -230px, 300% 50%; }
 }
+
+/* ---- P3：ガチャの「背景」（プレイ画面の石の上に重ねる） ---- */
+.hype-bgskin-grass {
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.08) 0 32px, transparent 32px 64px),
+    linear-gradient(180deg, rgba(120, 200, 255, 0.65) 0%, rgba(150, 220, 255, 0.5) 45%, rgba(106, 190, 48, 0.85) 46%, rgba(75, 139, 36, 0.9) 100%);
+}
+.hype-bgskin-sand {
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.08) 0 16px, transparent 16px 32px),
+    linear-gradient(180deg, rgba(140, 210, 255, 0.6) 0%, rgba(140, 210, 255, 0.45) 40%, rgba(240, 214, 150, 0.9) 41%, rgba(214, 180, 110, 0.92) 100%);
+}
+.hype-bgskin-sea {
+  background:
+    radial-gradient(circle at 20% 70%, rgba(255, 255, 255, 0.35) 0 3px, transparent 4px),
+    radial-gradient(circle at 75% 40%, rgba(255, 255, 255, 0.3) 0 2px, transparent 3px),
+    linear-gradient(180deg, rgba(30, 140, 220, 0.75), rgba(10, 50, 130, 0.92));
+  background-size: 90px 140px, 130px 110px, 100% 100%;
+  animation: hype-bubbles 5s linear infinite;
+}
+@keyframes hype-bubbles {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 0 -140px, 0 -110px, 0 0; }
+}
+.hype-bgskin-sunset {
+  background: linear-gradient(180deg, rgba(60, 30, 120, 0.85) 0%, rgba(230, 80, 120, 0.8) 40%, rgba(255, 170, 60, 0.85) 70%, rgba(80, 40, 30, 0.92) 71%, rgba(40, 20, 15, 0.95) 100%);
+}
+.hype-bgskin-aurora {
+  background:
+    linear-gradient(110deg, transparent 20%, rgba(80, 255, 170, 0.45) 35%, transparent 50%, rgba(120, 140, 255, 0.45) 65%, transparent 80%),
+    linear-gradient(180deg, rgba(5, 10, 40, 0.92), rgba(10, 30, 70, 0.92));
+  background-size: 300% 100%, 100% 100%;
+  animation: hype-aurora 9s ease-in-out infinite alternate;
+}
+@keyframes hype-aurora {
+  from { background-position: 0% 0, 0 0; }
+  to { background-position: 100% 0, 0 0; }
+}
+
+/* ---- P3：ガチャのカプセル（色はレア度：白 → 青 → 金 → にじ） ---- */
+.hype-capsule {
+  border: 6px solid #1d1209;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--cap, #ffffff) 0 50%, #f4f4f4 50% 100%);
+  box-shadow: inset -10px -10px 0 rgba(0, 0, 0, 0.18), inset 10px 10px 0 rgba(255, 255, 255, 0.45), 0 0 40px var(--cap-glow, transparent);
+  transition: box-shadow 0.3s;
+}
+.hype-capsule-rainbow {
+  --cap: #ff4d4d;
+  background: linear-gradient(180deg, transparent 0 50%, #f4f4f4 50% 100%), linear-gradient(90deg, #ff4d4d, #ffb84d, #fff14d, #5dff6a, #4dd2ff, #b44dff, #ff4d4d);
+  background-size: 100% 100%, 200% 100%;
+  animation: hype-capsule-rainbow 1s linear infinite;
+}
+@keyframes hype-capsule-rainbow {
+  from { background-position: 0 0, 0% 0; }
+  to { background-position: 0 0, 200% 0; }
+}
+/* レア度の文字・ふち */
+.hype-rarity-N { background: #9a9a9a; color: #fff; }
+.hype-rarity-R { background: #3a7ae8; color: #fff; }
+.hype-rarity-SR { background: linear-gradient(180deg, #fff1a8, #ffd84d 45%, #e0a400); color: #3a2600; }
+.hype-rarity-SSR { background: linear-gradient(90deg, #ff4d4d, #ffb84d, #fff14d, #5dff6a, #4dd2ff, #b44dff); color: #1d1209; }
+/* 図鑑：まだ持っていないものは影だけ */
+.hype-silhouette {
+  filter: brightness(0) opacity(0.55);
+}

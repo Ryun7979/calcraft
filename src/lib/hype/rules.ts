@@ -138,6 +138,47 @@ export const RULES = {
     levelBase: 150,
     levelStep: 60,
   },
+
+  /**
+   * コイン（P3）。経験値と同じ「ごほうび用スコア」から出す（倍率は capMult まで）。
+   * コイン = ごほうび用スコア ÷ perCoin ＋ 遊びきったぶん playBonus。値は scripts/simulate.ts の試算で決める（docs/spec.md §11）
+   */
+  coin: {
+    perCoin: 40,
+    playBonus: 5,
+  },
+
+  /** ガチャ（ゲーム内コインだけ）。排出率は画面にも出す */
+  gacha: {
+    cost: 100,
+    /** レア度ごとの排出率（%）。合計 100 */
+    rates: { N: 60, R: 30, SR: 8, SSR: 2 },
+    /** この回数のうちに SR 以上が出なければ、次は SR 以上が確定（天井） */
+    pity: 20,
+    /** だぶったら「かけら」1つ。この数で、まだ持っていないものを1つえらんで交換できる */
+    shardsPerItem: 10,
+    /** 演出の長さ（ミリ秒）。レア度が高いほど長い */
+    revealMs: { N: 2000, R: 3000, SR: 4500, SSR: 6500 },
+    /** フェイント（いったん止まってから色が上がる）の確率。SR 以上だけ */
+    feintChance: 0.35,
+  },
+
+  /** デイリーミッション：1日3つ。途切れても罰はなし */
+  daily: {
+    count: 3,
+    /** 1つできたときのコイン */
+    reward: 20,
+    /** 3つ全部できたときのボーナス */
+    allBonus: 60,
+    /** その日はじめて遊んだときのコイン = streakCoin × min(連続日数, streakCap) */
+    streakCoin: 5,
+    streakCap: 7,
+  },
+
+  /** 休けいのお知らせ。プレイとプレイのあいだがこの分数より空いたら、連続プレイを数えなおす */
+  rest: {
+    gapMinutes: 10,
+  },
 } as const;
 
 export type RankName = (typeof RULES.rank)[number]['name'];

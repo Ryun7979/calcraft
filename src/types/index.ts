@@ -23,6 +23,8 @@ export type QuestionCount = 4 | 10 | 20;
 /** れんしゅう（問題数を決める）／チャレンジ（時間内に何問とけるか） */
 export type PlayMode = 'practice' | 'challenge';
 export type ChallengeMinutes = 1 | 2 | 3;
+/** 休けいのお知らせまでの分数（0 でお知らせしない） */
+export type RestMinutes = 0 | 15 | 30 | 45 | 60;
 
 export interface Settings {
   effectMode: EffectMode;
@@ -31,4 +33,5 @@ export interface Settings {
   questionCount: QuestionCount;
   playMode: PlayMode;
   challengeMinutes: ChallengeMinutes;
+  restMinutes: RestMinutes;
 }

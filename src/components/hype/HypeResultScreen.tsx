@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { RotateCcw, Home } from 'lucide-react';
-import { AnsweredQuestion, EffectIntensity, Grade, Operation } from '../../types';
+import { RotateCcw, Home, Coins, Flame } from 'lucide-react';
+import { AnsweredQuestion, EffectIntensity, Grade, Operation, RestMinutes } from '../../types';
 import { OP_SYMBOLS, pageTransition } from '../../constants';
 import { cn } from '../../lib/utils';
 import { Button } from '../ui/Button';
@@ -15,6 +15,8 @@ import { INTENSITY, RankName, RULES } from '../../lib/hype/rules';
 import { hypeAudio } from '../../lib/hype/audio';
 import { pickPraise } from '../../lib/hype/praise';
 import { bestKey, challengeKey, loadSave, mutateSave, Progress } from '../../lib/storage';
+import { settlePlay, SettleResult } from '../../lib/hype/rewards';
+import { dateKey, missionText } from '../../lib/hype/daily';
 
 interface Props {
   answers: AnsweredQuestion[];
@@ -27,6 +29,8 @@ interface Props {
   backToMenu: () => void;
   progress: Progress;
   updateProgress: (fn: (p: Progress) => void) => void;
+  /** 休けいのお知らせの分数（0 でなし） */
+  restMinutes: RestMinutes;
 }
 
 const RANK_STYLE: Record<RankName, string> = {
@@ -61,17 +65,10 @@ interface BestResult {
 // 自己ベストの判定は1プレイにつき1回だけ（StrictMode で effect が2回走っても、2回目で「更新なし」にならないように）
 const bestCache = new WeakMap<object, BestResult>();
 
-interface XpResult {
-  /** このプレイの前の経験値の合計 */
-  before: number;
-  /** ルーレットの倍率（スキルがなければ null） */
-  roulette: number | null;
-  gained: number;
-}
-// 経験値の加算も1プレイ1回。ルーレットの結果は画面を開いた時点で決めて保存し、見せ方だけ遅らせる
-const xpCache = new WeakMap<object, XpResult>();
+// ごほうび（コイン → デイリー → 経験値）の書き込みも1プレイ1回。ルーレットの結果は画面を開いた時点で決めて保存し、見せ方だけ遅らせる
+const xpCache = new WeakMap<object, SettleResult>();
 
-export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op, intensity, fx, startGame, backToMenu, progress, updateProgress }) => {
+export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op, intensity, fx, startGame, backToMenu, progress, updateProgress, restMinutes }) => {
   const prof = INTENSITY[intensity];
   const challenge = summary?.mode === 'challenge';
   const minutes = summary?.minutes ?? 1;
@@ -95,7 +92,8 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
   const badgeRef = useRef<HTMLDivElement>(null);
   const stepRef = useRef(step);
   stepRef.current = step;
-  const [xpRes, setXpRes] = useState<XpResult | null>(null);
+  const [xpRes, setXpRes] = useState<SettleResult | null>(null);
+  const [restShown, setRestShown] = useState(false);
   const [xpShown, setXpShown] = useState(progress.xp);
   const [rouletteFace, setRouletteFace] = useState<number | null>(null);
   const [levelUp, setLevelUp] = useState<number | null>(null);
@@ -127,24 +125,77 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 経験値（1回だけ保存）
+  // ごほうび：コイン・デイリーミッション・連続日数・休けい・経験値（1回だけ保存）
   useEffect(() => {
     if (!summary) return;
     let r = xpCache.get(summary.state);
     if (!r) {
-      const base = xpOfPlay(summary.state);
-      const roulette = summary.mods.roulette ? spinRoulette() : null;
-      const gained = Math.round(base * (roulette ?? 1));
-      r = { before: progress.xp, roulette, gained };
-      xpCache.set(summary.state, r);
+      const st = summary.state;
+      const now = Date.now();
+      let settled: SettleResult | null = null;
       updateProgress((p) => {
-        p.xp += gained;
+        settled = settlePlay(p, {
+          stats: {
+            mode: summary.mode,
+            correct,
+            total,
+            maxCombo: st.maxCombo,
+            feverCount: st.feverCount,
+            goldenCleared: st.goldenCleared,
+            defeated: summary.defeated,
+            rankIndex,
+          },
+          reward: st.reward,
+          xpBase: xpOfPlay(st),
+          roulette: summary.mods.roulette ? spinRoulette() : null,
+          today: dateKey(new Date(now)),
+          now,
+          playMs: Math.max(0, now - summary.startedAt),
+          restMinutes,
+        });
       });
+      if (!settled) return;
+      r = settled;
+      xpCache.set(summary.state, r);
     }
     setXpRes(r);
-    setXpShown(r.before);
+    setXpShown(r.xpBefore);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ミッション達成・休けいのお知らせ（経験値バーのあと）
+  useEffect(() => {
+    if (step !== 'done' || !xpRes) return;
+    const timers: number[] = [];
+    const base = xpRes.roulette !== null ? 3400 : 2000;
+    xpRes.cleared.forEach((m, i) =>
+      timers.push(
+        window.setTimeout(() => {
+          hypeAudio.coin();
+          fx.current?.bang('ミッション達成!', window.innerWidth * (0.3 + 0.2 * i), window.innerHeight * 0.3, '#7dff6a', 30);
+          (i % 2 ? girlBubble : boyBubble).current?.say(`「${missionText(m)}」できた！`, true);
+        }, base + i * 600),
+      ),
+    );
+    if (xpRes.allClear)
+      timers.push(
+        window.setTimeout(() => {
+          hypeAudio.best();
+          fx.current?.confetti(120);
+          both((h) => h.play('jump'));
+        }, base + xpRes.cleared.length * 600),
+      );
+    if (xpRes.remindRest)
+      timers.push(
+        window.setTimeout(() => {
+          setRestShown(true);
+          boyBubble.current?.say('そろそろ休けいしよう！', true);
+          window.setTimeout(() => girlBubble.current?.say('目を休めて、お水を飲もうね！', true), 500);
+        }, base + xpRes.cleared.length * 600 + 1200),
+      );
+    return () => timers.forEach((t) => window.clearTimeout(t));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, xpRes]);
 
   // ランク発表のあと：（ルーレット →）経験値バーが伸びる → レベルアップ
   useEffect(() => {
@@ -167,11 +218,11 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
     const grow = () => {
       const start = performance.now();
       const dur = 1400;
-      let lastLevel = levelInfo(xpRes.before).level;
+      let lastLevel = levelInfo(xpRes.xpBefore).level;
       let lastTick = 0;
       const tick = (now: number) => {
         const k = Math.min(1, (now - start) / dur);
-        const xp = xpRes.before + xpRes.gained * (1 - Math.pow(1 - k, 2));
+        const xp = xpRes.xpBefore + xpRes.xpGained * (1 - Math.pow(1 - k, 2));
         setXpShown(xp);
         const lv = levelInfo(xp).level;
         if (lv > lastLevel) {
@@ -388,11 +439,39 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
               <div className="h-full bg-gradient-to-r from-sky-500 to-cyan-300" style={{ width: `${(xpInfo.into / xpInfo.need) * 100}%` }} />
             </div>
             <span className="text-lg font-bold whitespace-nowrap">
-              経験値 <span className="text-green-300 text-2xl">+{xpRes.gained.toLocaleString()}</span>
+              経験値 <span className="text-green-300 text-2xl">+{xpRes.xpGained.toLocaleString()}</span>
+            </span>
+            <span className="text-lg font-bold whitespace-nowrap flex items-center gap-1">
+              <Coins className="w-5 h-5 text-yellow-300" />
+              <span className="text-yellow-300 text-2xl">+{(xpRes.playCoins + xpRes.missionCoins + xpRes.streakCoins).toLocaleString()}</span>
             </span>
             {xpRes.roulette !== null && (
               <span className="hype-golden-tag px-2 text-lg whitespace-nowrap">
                 ルーレット ×{step === 'done' && rouletteFace !== null ? rouletteFace : '?'}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* デイリーミッション・連続日数・休けい */}
+        {xpRes && step === 'done' && (xpRes.cleared.length > 0 || xpRes.streakCoins > 0 || restShown) && (
+          <div className="flex flex-wrap items-center justify-center gap-2 text-base font-bold">
+            {xpRes.streakCoins > 0 && (
+              <span className="hype-golden-tag px-3 py-0.5 flex items-center gap-1 whitespace-nowrap">
+                <Flame className="w-4 h-4" />
+                {xpRes.streak}日 連続！ コイン +{xpRes.streakCoins}
+              </span>
+            )}
+            {xpRes.cleared.map((m) => (
+              <span key={m.id} className="hype-sticker px-3 py-0.5 whitespace-nowrap">
+                ミッション達成「{missionText(m)}」
+              </span>
+            ))}
+            {xpRes.allClear && <span className="hype-sticker px-3 py-0.5 whitespace-nowrap">3つ全部できた！ ボーナス</span>}
+            {xpRes.missionCoins > 0 && <span className="text-yellow-300 whitespace-nowrap">ミッションのコイン +{xpRes.missionCoins}</span>}
+            {restShown && (
+              <span className="mc-panel !bg-sky-900/80 !border-sky-300 !py-1 !px-3 text-white whitespace-nowrap">
+                {xpRes.restMinutes}分 あそんだよ。そろそろ休けいしよう！
               </span>
             )}
           </div>
