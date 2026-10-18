@@ -1,8 +1,42 @@
-// マシマシモードの音。すべて Web Audio で合成する（素材ファイルなし・外部通信なし）。
-// 音の大きさのバランスはこのファイルに集める。あとで Gemini 製の曲に差し替えるときも、
-// playBgm() / 各効果音の関数の中身だけを差し替えればよい（呼ぶ側は変えない）。
+// マシマシモードの音。短い効果音は Web Audio で合成する。
+// BGM とジングルは Gemini（Web 画面）で作った MP3（ビルドに同梱。台帳は docs/assets.md）。
+// MP3 は最初の操作のあとに読みこみ、読みこむまでは合成の曲で鳴らす（読みこめたら重ねて切り替える）。
+// 音の大きさのバランスはこのファイルに集める。呼ぶ側は playBgm() と各効果音の名前だけを使う。
 
 export type BgmName = 'title' | 'play' | 'fever' | 'result';
+export type JingleName = 'fever' | 'levelUp' | 'rank' | 'gacha';
+
+const byName = (m: Record<string, string>) =>
+  Object.fromEntries(Object.entries(m).map(([path, url]) => [path.split('/').pop()!.replace(/\.mp3$/, ''), url]));
+const BGM_URL = byName(import.meta.glob<string>('../../assets/hype/bgm/*.mp3', { eager: true, import: 'default' }));
+const JINGLE_URL = byName(import.meta.glob<string>('../../assets/hype/jingle/*.mp3', { eager: true, import: 'default' }));
+
+/** 曲ファイルのくり返し（秒）。from から鳴らしはじめ、start〜end をくり返す（つなぎ目は XFADE 秒重ねる）。
+ *  start・end は小節の頭（加工台の onset / refineLoop で測った値。docs/assets.md）。
+ *  gain は曲ごとの大きさをそろえる倍率（RMS 0.2 くらいに） */
+const LOOP: Record<BgmName, { from: number; start: number; end: number; gain: number }> = {
+  // 120bpm：前奏 0〜16.07 のあと、16 小節（32 秒）をくり返す
+  title: { from: 0, start: 16.07, end: 48.07, gain: 0.9 },
+  // 144bpm：前奏 0〜12.98 のあと、32 小節（53.3 秒）をくり返す
+  play: { from: 0, start: 12.98, end: 66.32, gain: 0.95 },
+  // 174bpm：前奏は飛ばし、いちばん盛り上がる所から。32 小節（44.1 秒）をくり返す
+  fever: { from: 1.094, start: 1.094, end: 45.231, gain: 1.1 },
+  // 147bpm：ファンファーレ 0〜9.39 を1回鳴らし、16 小節（26.2 秒）をくり返す
+  result: { from: 0, start: 9.39, end: 35.563, gain: 1.25 },
+};
+const XFADE = 1.0;
+
+/** ジングル：どのファイルの何秒目から何秒を鳴らすか（おわりはフェードアウト） */
+const JINGLES: Record<JingleName, { file: string; offset: number; dur: number; vol: number }> = {
+  // FEVER 突入：駆け上がるところ（150bpm）。カットインの文字を叩きつけるときに鳴らす
+  fever: { file: 'fever', offset: 0.286, dur: 2.8, vol: 0.9 },
+  // レベルアップ・スキル解放：ファンファーレの頭（120bpm）
+  levelUp: { file: 'levelup', offset: 0.245, dur: 3.0, vol: 0.9 },
+  // ランク S 以上の発表：同じ曲のいちばん盛り上がるところ
+  rank: { file: 'levelup', offset: 8.005, dur: 3.4, vol: 0.75 },
+  // ガチャで SR・SSR：FEVER のジングルの後半
+  gacha: { file: 'fever', offset: 11.516, dur: 2.8, vol: 0.75 },
+};
 
 const VOL = {
   master: 0.9,
@@ -128,6 +162,16 @@ class HypeAudio {
   private duckUntil = 0;
   private pack: SoundPack = DEFAULT_PACK;
 
+  /** 読みこんだ MP3（URL ごと） */
+  private buffers = new Map<string, AudioBuffer>();
+  /** いま鳴っている曲ファイル（つなぎ目で重ねるので、古いほうも少しのあいだ残る） */
+  private fileVoices: { src: AudioBufferSourceNode; gain: GainNode }[] = [];
+  /** 曲ファイルで鳴らしているときの、次につなぐ時刻（合成で鳴らしているときは 0） */
+  private nextLoopAt = 0;
+  private jingleVoices: { src: AudioBufferSourceNode; g: GainNode }[] = [];
+  /** ジングルが鳴りおわる時刻（ctx の時刻）。新しい曲はこれを待って始める */
+  private jingleUntil = 0;
+
   /** 操作音・正解音の音色を変える（null でいつもの音） */
   setSoundPack(p: SoundPack | null | undefined) {
     this.pack = p ?? DEFAULT_PACK;
@@ -166,8 +210,108 @@ class HypeAudio {
         else this.ctx.resume();
       });
       if (this.wanted) this.startBgm(this.wanted);
+      void this.loadFiles();
     }
     if (this.ctx.state === 'suspended' && !document.hidden) this.ctx.resume();
+  }
+
+  /** MP3 を読みこむ（いまの曲を先に）。読めたら、合成で鳴っている同じ曲を MP3 に切り替える */
+  private async loadFiles() {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const order = [
+      ...(this.wanted && BGM_URL[this.wanted] ? [BGM_URL[this.wanted]] : []),
+      ...Object.values(BGM_URL),
+      ...Object.values(JINGLE_URL),
+    ];
+    for (const url of new Set(order)) {
+      if (this.buffers.has(url)) continue;
+      try {
+        const data = await (await fetch(url)).arrayBuffer();
+        this.buffers.set(url, await ctx.decodeAudioData(data));
+      } catch {
+        // 読めなかった曲は合成のまま鳴らす
+        continue;
+      }
+      const cur = this.current;
+      if (cur && this.nextLoopAt === 0 && BGM_URL[cur] === url) this.startBgm(cur, true);
+    }
+  }
+
+  private bgmBuffer(name: BgmName) {
+    const url = BGM_URL[name];
+    return url ? this.buffers.get(url) : undefined;
+  }
+
+  /** 曲ファイルを at 秒目から鳴らす（fade 秒かけて大きくする） */
+  private startVoice(buf: AudioBuffer, at: number, fade: number, level: number, when = 0) {
+    const ctx = this.ctx!;
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = ctx.createGain();
+    const t = Math.max(ctx.currentTime + 0.02, when);
+    gain.gain.setValueAtTime(fade > 0 ? 0.0001 : level, t);
+    if (fade > 0) gain.gain.linearRampToValueAtTime(level, t + fade);
+    src.connect(gain).connect(this.bgmBus);
+    src.start(t, at);
+    this.fileVoices.push({ src, gain });
+  }
+
+  /** 鳴っている曲ファイルを fade 秒で消す */
+  private fadeVoices(fade: number) {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    for (const v of this.fileVoices) {
+      v.gain.gain.cancelScheduledValues(t);
+      v.gain.gain.setValueAtTime(v.gain.gain.value, t);
+      v.gain.gain.linearRampToValueAtTime(0.0001, t + fade);
+      v.src.stop(t + fade + 0.05);
+    }
+    this.fileVoices = [];
+  }
+
+  /** ジングルを止める（画面を離れたとき） */
+  stopJingles() {
+    for (const { src } of this.jingleVoices) {
+      try {
+        src.stop();
+      } catch {
+        // もう止まっている
+      }
+    }
+    this.jingleVoices = [];
+    this.jingleUntil = 0;
+  }
+
+  /** ジングルを鳴らす（delay 秒あと）。MP3 が読めていなければ false（呼ぶ側が合成の音で代わりに鳴らす） */
+  private jingle(name: JingleName, delay = 0): boolean {
+    const j = JINGLES[name];
+    const url = JINGLE_URL[j.file] ?? BGM_URL[j.file];
+    const buf = url ? this.buffers.get(url) : undefined;
+    if (!this.ctx || !buf || j.dur <= 0) return false;
+    const ctx = this.ctx;
+    const t = ctx.currentTime + 0.01 + delay;
+    // 前のジングルは 0.15 秒で消す
+    for (const v of this.jingleVoices) {
+      v.g.gain.cancelScheduledValues(t);
+      v.g.gain.setValueAtTime(v.g.gain.value, t);
+      v.g.gain.linearRampToValueAtTime(0.0001, t + 0.15);
+      v.src.stop(t + 0.2);
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(j.vol, t);
+    g.gain.setValueAtTime(j.vol, t + j.dur - 0.4);
+    g.gain.linearRampToValueAtTime(0.0001, t + j.dur);
+    src.connect(g).connect(this.sfxBus);
+    src.start(t, j.offset, j.dur + 0.05);
+    src.onended = () => (this.jingleVoices = this.jingleVoices.filter((v) => v.src !== src));
+    this.jingleVoices.push({ src, g });
+    this.jingleUntil = Math.max(this.jingleUntil, t + j.dur);
+    this.duck(delay + j.dur);
+    return true;
   }
 
   setBgmEnabled(on: boolean) {
@@ -182,29 +326,63 @@ class HypeAudio {
     if (!name) return this.stopBgm();
     if (!this.bgmEnabled || !this.ctx) return;
     if (this.current === name) return;
+    if (name !== 'fever') this.stopJingles();
     this.startBgm(name);
   }
 
-  private startBgm(name: BgmName) {
+  /** crossfade = true：合成で鳴っていた同じ曲を、読めた MP3 に重ねて切り替える */
+  private startBgm(name: BgmName, crossfade = false) {
     if (!this.ctx || !this.bgmEnabled) return;
-    this.stopBgm();
+    this.stopBgm(crossfade ? XFADE : 0.25);
     this.current = name;
-    this.step = 0;
-    this.nextTime = this.ctx.currentTime + 0.05;
+    const buf = this.bgmBuffer(name);
+    if (buf) {
+      // 曲ファイル：頭から鳴らし、LOOP.end の手前で LOOP.start へ重ねてつなぐ
+      const { from, gain } = LOOP[name];
+      const now = this.ctx.currentTime + 0.02;
+      const when = Math.max(now, this.jingleUntil - 0.3);
+      // 合成の曲から切り替えるときは XFADE 秒、ジングルのあとは 0.3 秒で大きくする
+      const fade = crossfade ? XFADE : when > now ? 0.3 : 0;
+      this.startVoice(buf, from, fade, gain, when);
+      this.nextLoopAt = when + this.loopEnd(name, buf) - from;
+    } else {
+      this.nextLoopAt = 0;
+      this.step = 0;
+      this.nextTime = this.ctx.currentTime + 0.05;
+    }
     const target = name === 'fever' ? VOL.bgmFever : VOL.bgm;
     this.bgmBus.gain.setTargetAtTime(target, this.ctx.currentTime, 0.05);
     this.timer = window.setInterval(() => this.schedule(), 25);
   }
 
-  private stopBgm() {
+  private loopEnd(name: BgmName, buf: AudioBuffer) {
+    const e = LOOP[name].end;
+    return e > 0 ? Math.min(e, buf.duration) : buf.duration;
+  }
+
+  private stopBgm(fade = 0.25) {
     if (this.timer !== null) window.clearInterval(this.timer);
     this.timer = null;
     this.current = null;
+    this.nextLoopAt = 0;
+    this.fadeVoices(fade);
   }
 
   private schedule() {
     const ctx = this.ctx;
     if (!ctx || !this.current) return;
+    if (this.nextLoopAt > 0) {
+      // 曲ファイル：つなぎ目に来たら、次のくり返しを重ねて始める
+      const buf = this.bgmBuffer(this.current)!;
+      if (ctx.currentTime >= this.nextLoopAt - XFADE) {
+        const { start, gain } = LOOP[this.current];
+        this.fadeVoices(XFADE);
+        this.startVoice(buf, Math.max(0, start - XFADE), XFADE, gain);
+        this.nextLoopAt += this.loopEnd(this.current, buf) - start;
+      }
+      this.applyDuck();
+      return;
+    }
     const tr = TRACKS[this.current];
     const stepDur = 60 / tr.bpm / 4;
     const drums = tr.drum.split(/\s+/);
@@ -222,7 +400,12 @@ class HypeAudio {
       this.nextTime += stepDur;
       this.step++;
     }
-    // ダッキング（成功音のあいだ曲を下げる）
+    this.applyDuck();
+  }
+
+  /** ダッキング（成功音・ジングルのあいだ曲を下げる） */
+  private applyDuck() {
+    const ctx = this.ctx!;
     const base = this.current === 'fever' ? VOL.bgmFever : VOL.bgm;
     const target = ctx.currentTime < this.duckUntil ? base * VOL.duck : base;
     this.bgmBus.gain.setTargetAtTime(target, ctx.currentTime, 0.04);
@@ -361,8 +544,10 @@ class HypeAudio {
     const t = this.ctx!.currentTime;
     this.tone(this.sfxBus, 'sawtooth', 110, t, 0.8, 0.2, 880);
     [0.8, 1.2, 1.6].forEach((d, i) => this.kick(this.sfxBus, t + d, 0.6 + i * 0.1));
-    const notes = [69, 72, 76, 81, 84, 88, 93];
-    notes.forEach((n, i) => this.tone(this.sfxBus, 'square', midiHz(n), t + 1.6 + i * 0.06, 0.3, 0.25));
+    if (!this.jingle('fever', 0.8)) {
+      const notes = [69, 72, 76, 81, 84, 88, 93];
+      notes.forEach((n, i) => this.tone(this.sfxBus, 'square', midiHz(n), t + 1.6 + i * 0.06, 0.3, 0.25));
+    }
     this.noise(this.sfxBus, t + 1.6, 0.8, 0.15, 3000);
   }
 
@@ -389,6 +574,7 @@ class HypeAudio {
     if (!this.ready()) return;
     this.duck(2);
     this.kick(this.sfxBus, this.ctx!.currentTime, 0.7);
+    if (index >= 3 && this.jingle('rank')) return;
     if (index >= 2) {
       const root = 72;
       const seq = [root, root + 4, root + 7, root + 12, root + 7, root + 12, root + 16, root + 19, root + 24];
@@ -484,6 +670,7 @@ class HypeAudio {
     this.duck(2);
     const t = this.ctx!.currentTime;
     this.kick(this.sfxBus, t, 0.7);
+    if (this.jingle('levelUp')) return;
     this.arp([72, 76, 79, 84, 79, 84, 88, 91, 96], 0.07, 0.28, 0.27);
   }
 
@@ -532,6 +719,7 @@ class HypeAudio {
     const t = this.ctx!.currentTime;
     this.kick(this.sfxBus, t, 0.7);
     this.noise(this.sfxBus, t, 0.4, 0.2, 3000);
+    if (rarity >= 2 && this.jingle('gacha')) return;
     const runs = [[72, 79, 84], [72, 76, 79, 84, 88], [72, 76, 79, 84, 88, 91, 96], [60, 64, 67, 72, 76, 79, 84, 88, 91, 96, 100]];
     this.arp(runs[rarity] ?? runs[0], 0.06, 0.3, 0.26);
     if (rarity >= 3) window.setTimeout(() => this.arp([96, 100, 103, 108], 0.09, 0.5, 0.2), 900);

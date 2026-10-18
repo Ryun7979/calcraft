@@ -270,6 +270,74 @@ async function glyphs(file, chars, { zoom = 4 } = {}) {
   return { dot, saved: out.length };
 }
 
+// ---- 音（Gemini の曲） ----
+
+/** MP3 を読む（モノラルにまとめた波形も返す） */
+async function loadAudio(path) {
+  const ab = await (await fetch('/' + path + '?t=' + Date.now())).arrayBuffer();
+  const buf = await new OfflineAudioContext(2, 44100, 44100).decodeAudioData(ab);
+  const mono = new Float32Array(buf.length);
+  for (let c = 0; c < buf.numberOfChannels; c++) buf.getChannelData(c).forEach((v, i) => (mono[i] += v / buf.numberOfChannels));
+  return { buf, mono, rate: buf.sampleRate, dur: buf.duration, bytes: ab.byteLength };
+}
+
+/** 大きさ（RMS）の移り変わり。win 秒ごと */
+function envelope(a, win = 0.5) {
+  const n = Math.round(a.rate * win);
+  const out = [];
+  for (let i = 0; i < a.mono.length; i += n) {
+    let s = 0;
+    for (let j = i; j < Math.min(a.mono.length, i + n); j++) s += a.mono[j] * a.mono[j];
+    out.push(Math.round(Math.sqrt(s / n) * 1000) / 1000);
+  }
+  return out;
+}
+
+/** 区切り（前の win 秒より ratio 倍以上大きく／小さくなった時刻） */
+function sections(a, win = 0.5, ratio = 1.6) {
+  const e = envelope(a, win);
+  const out = [];
+  for (let i = 1; i < e.length; i++) {
+    const r = (e[i] + 1e-3) / (e[i - 1] + 1e-3);
+    if (r > ratio || r < 1 / ratio) out.push({ t: +(i * win).toFixed(2), from: e[i - 1], to: e[i] });
+  }
+  return out;
+}
+
+/** くり返しのつなぎ目を詰める：start のあとの len 秒の波形に、end のまわり ±search 秒でいちばん似ている所を探す */
+function refineLoop(a, start, end, { len = 2, search = 0.3 } = {}) {
+  const r = a.rate;
+  const s0 = Math.round(start * r);
+  const n = Math.round(len * r);
+  const step = 4;
+  let best = { t: end, c: -Infinity };
+  for (let off = -search; off <= search; off += 0.002) {
+    const e0 = Math.round((end + off) * r);
+    if (e0 < 0 || e0 + n > a.mono.length) continue;
+    let c = 0, x2 = 0, y2 = 0;
+    for (let i = 0; i < n; i += step) {
+      const x = a.mono[s0 + i], y = a.mono[e0 + i];
+      c += x * y; x2 += x * x; y2 += y * y;
+    }
+    const cc = c / Math.sqrt(x2 * y2 + 1e-12);
+    if (cc > best.c) best = { t: +(end + off).toFixed(3), c: +cc.toFixed(3) };
+  }
+  return best;
+}
+
+/** 波形の大きさ：50ms ごとの RMS の最大と、全体の RMS（音のバランスを比べる） */
+function loudness(a, from = 0, to = a.dur) {
+  const n = Math.round(a.rate * 0.05);
+  let peak = 0, sum = 0, cnt = 0;
+  for (let i = Math.round(from * a.rate); i + n <= Math.min(a.mono.length, to * a.rate); i += n) {
+    let s = 0;
+    for (let j = i; j < i + n; j++) s += a.mono[j] * a.mono[j];
+    peak = Math.max(peak, Math.sqrt(s / n));
+    sum += s; cnt += n;
+  }
+  return { peakRms: +peak.toFixed(3), rms: +Math.sqrt(sum / Math.max(1, cnt)).toFixed(3) };
+}
+
 /** PNG で保存（_inbox/ か src/assets/hype/ の中だけ） */
 async function save(cv, path) {
   const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
@@ -278,7 +346,7 @@ async function save(cv, path) {
   return `${path} ${blob.size}B`;
 }
 
-Object.assign(window, { load, boxes, crop, pixelate, quantize, cutout, trim, square, hardAlpha, dotSize, glyphs, resize, tile, show, clearView, save, newCanvas, ctxOf });
+Object.assign(window, { load, boxes, crop, pixelate, quantize, cutout, trim, square, hardAlpha, dotSize, glyphs, loadAudio, envelope, sections, refineLoop, loudness, resize, tile, show, clearView, save, newCanvas, ctxOf });
 </script>
 </body>
 </html>

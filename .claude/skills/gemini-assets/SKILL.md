@@ -49,6 +49,15 @@ API は使わない。Gemini の Web 画面を Claude in Chrome（ユーザー�
 - 文字のシート：`glyphs('glyphs1.jpg', 'CALRFTEVO')`（3×3 の順に文字を並べて渡す。O や A の穴も透明になる）。
   シートごとに色がずれたら、そろっているシートの画像を添えて「まったく同じデザインで」と頼み直す。
 
+## 3.5 曲（BGM・ジングル）
+
+- 「音楽を作ってください。」で始める短いプロンプト（`docs/assets.md` §8・§9）。1〜2分かかり、2〜3分の曲ができる。2つのタブで並行して頼める。
+- ダウンロード：曲のカバーにマウスを乗せると右上に出るアイコンの左（ダウンロード）→「音声のみ MP3 トラック」。`トラックをダウンロード` ボタンはマウスを離すと消えるので、乗せてから座標でクリックする。ファイル名は曲名（`*.mp3`）。
+- 測る：加工台の `loadAudio`・`envelope`・`sections`・`loudness`・`refineLoop`。立ち上がり（`onset`）とテンポ（`tempo`）はその場で書いて使った（`docs/assets.md` に値）。
+- 切り出す：`node scripts/asset-lab/mp3cut.mjs 入力.mp3 出力.mp3 開始秒 終了秒`。出力の `firstSec`（実際に切れた位置）を引いて、くり返しの秒を切り出し後の秒に直す。
+- 置き場所：`src/assets/hype/bgm/`・`src/assets/hype/jingle/`。位置と大きさは `src/lib/hype/audio.ts` の `LOOP`・`JINGLES`。
+- 開発サーバーで鳴っているかを JS で確かめるときは、アプリが読んだ `audio.ts` の URL（`?t=` 付きのことがある）を `performance.getEntriesByType('resource')` で探して import する（別の URL だと別のインスタンスになる）。音は本当のクリック（`computer` の left_click）のあとでないと鳴らない。
+
 ## 4. 取りこむ
 
 - `src/assets/hype/{tiles,parts,ui,pose,glyphs,gacha}/名前.png` に置き、型の名前を `src/lib/hype/assets.ts` に足す（`import.meta.glob` で自動で読む）。
