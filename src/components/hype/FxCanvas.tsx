@@ -178,7 +178,9 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
         push({ x, y, vx: Math.cos(a) * 14, vy: Math.sin(a) * 14, g: 0.2, size: 0, color, life: 1.2, max: 1.2, text, font: size });
       },
       popText(text, x, y, color = '#ffe14d', size = 36) {
-        push({ x, y, vx: 0, vy: -1.6, g: 0, size: 0, color, life: 0.9, max: 0.9, text, font: size, pop: true });
+        // 大きな文字ほど長く見せる
+        const life = size >= 60 ? 1.3 : 0.9;
+        push({ x, y, vx: 0, vy: size >= 60 ? -1 : -1.6, g: 0, size: 0, color, life, max: life, text, font: size, pop: true });
       },
       setSpeedLines(level) {
         s.speedLines = level;
@@ -295,6 +297,23 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
         }
       }
 
+      // 画面のふちの火花（コンボ段階2以上・FEVER 中。ふちから内側へ少しだけ飛ぶ）
+      const sparkRate = (s.fever >= 0 ? 0.6 + 0.3 * s.fever : s.speedLines * 0.8) * s.intensity.particles * k;
+      if (sparkRate > 0 && s.intensity.shake > 0 && s.parts.length < (s.fever >= 0 ? RULES.particles.capFever : RULES.particles.cap) * 0.8) {
+        let n = Math.floor(sparkRate) + (Math.random() < sparkRate % 1 ? 1 : 0);
+        while (n-- > 0) {
+          const side = Math.floor(Math.random() * 4);
+          const along = Math.random();
+          const x = side === 0 ? 0 : side === 1 ? s.w : along * s.w;
+          const y = side === 2 ? 0 : side === 3 ? s.h : along * s.h;
+          const sp = 4 + Math.random() * 6;
+          const vx = side === 0 ? sp : side === 1 ? -sp : (Math.random() - 0.5) * 3;
+          const vy = side === 2 ? sp : side === 3 ? -sp : (Math.random() - 0.5) * 3;
+          const life = 0.4 + Math.random() * 0.4;
+          s.parts.push({ x, y, vx, vy, g: 0, size: 5 + Math.round(Math.random() * 5), color: PALETTE.rainbow[Math.floor(Math.random() * 6)], life, max: life });
+        }
+      }
+
       // パーティクル
       const parts = s.parts;
       for (let i = parts.length - 1; i >= 0; i--) {
@@ -315,7 +334,7 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
           ctx.font = `bold ${Math.round((p.font ?? 40) * scale)}px "Press Start 2P", "DotGothic16", sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.lineWidth = 8;
+          ctx.lineWidth = Math.max(8, (p.font ?? 40) * 0.16);
           ctx.strokeStyle = '#1d1209';
           ctx.strokeText(p.text, p.x, p.y);
           ctx.fillStyle = p.color;

@@ -6,9 +6,9 @@ export const RULES = {
   combo: {
     tiers: [0, 2, 4, 7, 10],
     mult: [1.0, 1.2, 1.5, 2.0, 3.0],
-    names: ['', 'ノリノリ！', 'アツい！', 'すごすぎ！', 'かくせい！！'],
-    /** この数ごとに上部の帯を出す */
-    bandEvery: 5,
+    names: ['', 'ノリノリ！', 'アツい！', 'すごすぎ！', '覚醒！！'],
+    /** この数ごとにコンボのカットイン（ひかえめ・ふつうでは帯）を出す */
+    bandEvery: 3,
   },
 
   /** FEVER ゲージ（0〜max） */
@@ -62,8 +62,14 @@ export const RULES = {
     feedbackMs: 700,
     /** カウントダウンの各段（よーい / 3 / 2 / 1 / GO） */
     countdownMs: [800, 600, 600, 600, 600],
-    tierCutinMs: 1300,
-    feverEntryMs: 2400,
+    tierCutinMs: 1500,
+    feverEntryMs: 2600,
+    /** FEVER の段階アップ（×4・×8・×16）のカットイン */
+    feverStageMs: 1500,
+    /** コンボ（bandEvery ごと）のカットイン */
+    comboCutinMs: 1100,
+    /** 正解ごとのミニカットイン（進行は止めない） */
+    miniCutinMs: 900,
     bandMs: 1600,
   },
 
@@ -99,18 +105,25 @@ export const RULES = {
   },
 
   particles: {
-    cap: 600,
-    capFever: 900,
+    cap: 1200,
+    capFever: 1800,
   },
 } as const;
 
 export type RankName = (typeof RULES.rank)[number]['name'];
 
-/** 演出のつよさごとの倍率 */
+/**
+ * 演出のつよさごとの倍率。
+ * hype：数字（+点数・飛ぶ文字・ドカッ!）の大きさ、キャラのはね方などの強さ。0 で v2 のまま、1 で最大。
+ * miniCutin：正解ごとのミニカットイン。extraCutin：コンボ・FEVER 段階アップも大きなカットインにする。
+ */
 export const INTENSITY = {
-  low: { particles: 0.35, flash: 0, shake: 0, invert: false, bigCutin: false },
-  normal: { particles: 0.7, flash: 0.5, shake: 0.5, invert: false, bigCutin: true },
-  max: { particles: 1, flash: 1, shake: 1, invert: true, bigCutin: true },
+  low: { particles: 0.35, flash: 0, shake: 0, invert: false, bigCutin: false, extraCutin: false, miniCutin: false, hype: 0 },
+  normal: { particles: 0.7, flash: 0.5, shake: 0.5, invert: false, bigCutin: true, extraCutin: false, miniCutin: true, hype: 0.5 },
+  max: { particles: 1, flash: 1, shake: 1, invert: true, bigCutin: true, extraCutin: true, miniCutin: true, hype: 1 },
 } as const;
 
 export type IntensityProfile = (typeof INTENSITY)[keyof typeof INTENSITY];
+
+/** v2 の大きさ a から強化後の大きさ b へ、つよさ（hype 0〜1）で補間する */
+export const hypeSize = (p: IntensityProfile, a: number, b: number) => Math.round(a + (b - a) * p.hype);

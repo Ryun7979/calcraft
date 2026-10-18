@@ -17,10 +17,11 @@
     if (!q) return null;
     const [a, op, b] = [...q.querySelectorAll('span')].map((s) => s.textContent.trim());
     const x = Number(a), y = Number(b);
-    if (op === '+') return { key: q.textContent, ans: x + y };
-    if (op === '-') return { key: q.textContent, ans: x - y };
-    if (op === '×') return { key: q.textContent, ans: x * y };
-    return { key: q.textContent, ans: Math.floor(x / y), rem: x % y };
+    // 同じ式が続けて出ることがあるので、文字ではなく要素（問題ごとに作り直される）で見分ける
+    if (op === '+') return { key: q, ans: x + y };
+    if (op === '-') return { key: q, ans: x - y };
+    if (op === '×') return { key: q, ans: x * y };
+    return { key: q, ans: Math.floor(x / y), rem: x % y };
   };
 
   window.__calcraftAutoplay = async ({ wrongEvery = 0, bufferEvery = 0, timeoutMs = 120000 } = {}) => {

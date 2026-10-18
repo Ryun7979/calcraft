@@ -7,7 +7,7 @@ import { FxHandle } from './FxCanvas';
 import { BattleField, BattleHandle } from './BattleField';
 import { HypeHud, HypeHudHandle } from './HypeHud';
 import { HypeAnswerInput } from './HypeAnswerInput';
-import { Band, BandLayer, CountdownLayer, CountPhase, Cutin, CutinLayer, CutinSpec } from './Cutins';
+import { Band, BandLayer, CountdownLayer, CountPhase, Cutin, CutinLayer, CutinSpec, MiniCutinHandle, MiniCutinLayer } from './Cutins';
 import {
   challengeParAnswers,
   comboTier,
@@ -19,7 +19,7 @@ import {
   initialHype,
   perfectScore,
 } from '../../lib/hype/engine';
-import { INTENSITY, RULES } from '../../lib/hype/rules';
+import { hypeSize, INTENSITY, RULES } from '../../lib/hype/rules';
 import { hypeAudio } from '../../lib/hype/audio';
 import { pickPraise } from '../../lib/hype/praise';
 
@@ -70,6 +70,10 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
   const questionRef = useRef<HTMLDivElement>(null);
   const hudRef = useRef<HypeHudHandle>(null);
   const battleRef = useRef<BattleHandle>(null);
+  const miniRef = useRef<MiniCutinHandle>(null);
+  const miniTurn = useRef(0);
+  /** v2 の大きさ a → 強化後 b（演出のつよさで補間） */
+  const sz = (a: number, b: number) => hypeSize(prof, a, b);
 
   const hype = useRef<HypeState>(initialHype());
   /** 止められるタイマー：理由が1つでもあれば FEVER ゲージの減り・チャレンジの時計が止まる */
@@ -114,7 +118,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
   };
   const zoomPulse = () => {
     if (prof.shake <= 0 || !stageRef.current) return;
-    stageRef.current.animate([{ scale: '1' }, { scale: '1.05' }, { scale: '1' }], { duration: 280, easing: 'ease-out', composite: 'add' });
+    stageRef.current.animate([{ scale: '1' }, { scale: String(1.05 + 0.04 * prof.hype) }, { scale: '1' }], { duration: 300, easing: 'ease-out', composite: 'add' });
   };
   const invertPulse = () => {
     if (!prof.invert || !stageRef.current) return;
@@ -145,8 +149,21 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
   const moodFor = (t: number, fever: boolean) => (fever ? 'feverDance' : t >= 2 ? 'shout' : 'idle');
   const hordeFor = (t: number, s: HypeState) => (s.fever ? 3 + s.feverStage : t >= 2 ? 2 : 1);
 
+  /** 大きなカットインは1回に1つ。優先：FEVER 突入 ＞ FEVER 段階アップ ＞ コンボ段階アップ ＞ コンボ数 */
+  const BIG_ORDER = ['feverStart', 'feverStage', 'tierUp', 'comboBand'] as const;
+  const pickBigCutin = (events: HypeEvent[]): HypeEvent['kind'] | undefined => {
+    if (!prof.bigCutin) return undefined;
+    // FEVER 突入は、ほかのカットインの最中でも上書きして出す
+    if (events.some((e) => e.kind === 'feverStart')) return 'feverStart';
+    if (pauses.current.has('cutin')) return undefined;
+    return BIG_ORDER.find(
+      (k) => events.some((e) => e.kind === k) && (k === 'tierUp' || prof.extraCutin),
+    );
+  };
+
   const handleEvents = (events: HypeEvent[]) => {
-    const hasFever = events.some((e) => e.kind === 'feverStart');
+    const big = pickBigCutin(events);
+    const center = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     for (const ev of events) {
       switch (ev.kind) {
         case 'tierUp': {
@@ -156,18 +173,29 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
           fx.current?.flash('#ffe14d', 0.3, 180);
           battleRef.current?.setMood(moodFor(ev.tier, hype.current.fever));
           battleRef.current?.setHorde(hordeFor(ev.tier, hype.current));
-          if (prof.bigCutin && !hasFever && !pauses.current.has('cutin')) showCutin({ kind: 'tier', tier: ev.tier }, RULES.timing.tierCutinMs);
-          else showBand(`${RULES.combo.names[ev.tier]} コンボ ×${RULES.combo.mult[ev.tier]}`, 'gold');
+          if (big === 'tierUp') {
+            showCutin({ kind: 'tier', tier: ev.tier }, RULES.timing.tierCutinMs);
+            fireworks(sz(0, 6 + ev.tier * 2), 60);
+            fx.current?.ring(center.x, center.y, '#ffe14d', window.innerWidth * 0.6);
+            shake(sz(0, 14), 500);
+          } else showBand(`${RULES.combo.names[ev.tier]} コンボ ×${RULES.combo.mult[ev.tier]}`, 'gold');
           break;
         }
         case 'comboBand':
           hypeAudio.comboBand();
-          showBand(`${ev.combo} コンボ！！ すごすぎ！`, 'gold');
-          fireworks(3, 80);
+          if (big === 'comboBand') {
+            showCutin({ kind: 'combo', combo: ev.combo }, RULES.timing.comboCutinMs);
+            fireworks(6, 50);
+            fx.current?.ring(center.x, center.y, '#4dd2ff', window.innerWidth * 0.5);
+            shake(12, 400);
+          } else {
+            showBand(`${ev.combo} コンボ！！ すごすぎ！`, 'gold');
+            fireworks(3, 80);
+          }
           break;
         case 'gaugeMax': {
           const g = hudRef.current?.gaugeRect();
-          if (g) fx.current?.bang('MAX!!', g.right - 60, g.bottom + 40, '#ff5a5a', 30);
+          if (g) fx.current?.bang('MAX!!', g.right - 60, g.bottom + sz(40, 60), '#ff5a5a', sz(30, 56));
           break;
         }
         case 'feverStart': {
@@ -178,13 +206,13 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
           battleRef.current?.setHorde(hordeFor(comboTier(hype.current.combo), hype.current));
           battleRef.current?.say(pickPraise('fever'), true, 'boy');
           later(300, () => battleRef.current?.say(pickPraise('fever'), true, 'girl'));
-          if (prof.bigCutin) {
+          if (big === 'feverStart') {
             fx.current?.converge(800);
             showCutin({ kind: 'fever' }, RULES.timing.feverEntryMs);
             later(1600, () => {
               hypeAudio.playBgm('fever');
-              fireworks(14, 50);
-              fx.current?.confetti(160);
+              fireworks(sz(14, 24), 40);
+              fx.current?.confetti(sz(160, 300));
               fx.current?.flash('#ffffff', 0.55, 220, true);
               fx.current?.ring(window.innerWidth / 2, window.innerHeight / 2, '#ffffff', Math.max(window.innerWidth, window.innerHeight) * 0.7);
               shake(16, 600);
@@ -200,7 +228,11 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
           hypeAudio.feverStage(ev.stage);
           fx.current?.setFever(ev.stage);
           battleRef.current?.setHorde(hordeFor(comboTier(hype.current.combo), hype.current));
-          showBand(`FEVER ×${RULES.fever.mult[ev.stage]}!! とまらない！`, 'red');
+          if (big === 'feverStage') {
+            showCutin({ kind: 'feverStage', stage: ev.stage }, RULES.timing.feverStageMs);
+            fx.current?.confetti(120);
+            shake(16, 500);
+          } else showBand(`FEVER ×${RULES.fever.mult[ev.stage]}!! 止まらない！`, 'red');
           fireworks(4 + ev.stage * 3, 70);
           fx.current?.flash('#ffffff', 0.4, 180);
           fx.current?.ring(window.innerWidth / 2, window.innerHeight / 2, '#ff5a5a', window.innerWidth * 0.6);
@@ -214,7 +246,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
           setFeverOn(false);
           battleRef.current?.setMood(moodFor(comboTier(hype.current.combo), false));
           battleRef.current?.setHorde(hordeFor(comboTier(hype.current.combo), hype.current));
-          showBand('FEVER おしまい！ よくがんばった！', 'green');
+          showBand('FEVER おしまい！よくがんばった！', 'green');
           break;
       }
     }
@@ -251,9 +283,9 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
           hypeAudio.yoi();
           b?.setMood('charge');
           b?.say(pickPraise('start'), true, 'boy');
-          later(350, () => b?.say(challenge ? `${props.challengeMinutes}ぷん チャレンジ！` : pickPraise('start'), true, 'girl'));
-          if (levelChange === 'up') showBand('LEVEL UP!! レベルがあがった！ すごい！', 'green');
-          if (levelChange === 'down') showBand('レベルをちょうせい！ じっくりいこう！', 'gold');
+          later(350, () => b?.say(challenge ? `${props.challengeMinutes}分チャレンジ！` : pickPraise('start'), true, 'girl'));
+          if (levelChange === 'up') showBand('LEVEL UP!! レベルが上がった！すごい！', 'green');
+          if (levelChange === 'down') showBand('レベルを調整！じっくりいこう！', 'gold');
         } else if (p === 'go') {
           hypeAudio.go();
           hypeAudio.playBgm('play');
@@ -364,14 +396,14 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
     const c = center(el);
     const t = comboTier(r.state.combo);
     hypeAudio.key(r.state.combo + keyIndex.current++);
-    fx.current?.burst(c.x, c.y, { count: 18 + t * 6, speed: 6 + t, size: 9 });
-    fx.current?.ring(c.x, c.y, '#ffe14d', 90 + t * 20);
-    fx.current?.flyText(ch, c.x, c.y, '#ffe14d', 64);
+    fx.current?.burst(c.x, c.y, { count: sz(18, 30) + t * 6, speed: sz(6, 9) + t, size: sz(9, 12) });
+    fx.current?.ring(c.x, c.y, '#ffe14d', sz(90, 150) + t * 20);
+    fx.current?.flyText(ch, c.x, c.y, '#ffe14d', sz(64, 110));
     fx.current?.flash('#ffffff', 0.05, 80);
     const g = hudRef.current?.gaugeRect();
     if (g && r.gaugeDelta > 0) {
       const gx = g.left + (g.width * hype.current.gauge) / RULES.gauge.max;
-      fx.current?.popText(`+${Math.round(r.gaugeDelta)}`, Math.min(g.right - 20, gx), g.bottom + 18, '#ffe14d', 22);
+      fx.current?.popText(`+${Math.round(r.gaugeDelta)}`, Math.min(g.right - 30, gx), g.bottom + sz(18, 30), '#ffe14d', sz(22, 40));
     }
     battleRef.current?.say(pickPraise('key'));
     battleRef.current?.key();
@@ -421,20 +453,28 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
     if (ok) {
       hypeAudio.correct(t + (r.state.fever ? 1 : 0));
       fx.current?.firework(c.x, c.y);
-      fx.current?.ring(c.x, c.y, '#7dff6a', 260);
-      fx.current?.burst(c.x, c.y, { count: 40 + t * 20, speed: 10 + t, size: 11 });
+      fx.current?.ring(c.x, c.y, '#7dff6a', sz(260, 420));
+      if (prof.hype > 0) fx.current?.ring(c.x, c.y, '#ffffff', sz(260, 600));
+      fx.current?.burst(c.x, c.y, { count: sz(40, 80) + t * sz(20, 30), speed: sz(10, 14) + t, size: sz(11, 14) });
       if (big) {
         fx.current?.firework(c.x - window.innerWidth * 0.28, c.y - 40);
         fx.current?.firework(c.x + window.innerWidth * 0.28, c.y - 40);
       }
+      // まわりにも花火（強さと段階で増える）
+      fireworks(sz(0, 2 + t + (r.state.fever ? 2 : 0)), 70);
       fx.current?.flash('#ffffff', 0.25, 150);
       const sr = hudRef.current?.scoreRect();
-      if (sr && r.gained > 0) fx.current?.popText(`+${r.gained.toLocaleString()}`, sr.left + sr.width / 2, sr.bottom + 30, '#7dff6a', 38);
+      if (sr && r.gained > 0) fx.current?.popText(`+${r.gained.toLocaleString()}`, sr.left + sr.width / 2, sr.bottom + sz(30, 50), '#7dff6a', sz(38, 64));
+      // 画面のまん中にも大きく「+点数」
+      if (r.gained > 0 && prof.hype > 0) {
+        const col = r.state.fever ? '#ff8fb1' : t >= 2 ? '#ffe14d' : '#7dff6a';
+        fx.current?.popText(`+${r.gained.toLocaleString()}`, c.x, c.y + sz(0, 40), col, sz(60, 120));
+      }
       b?.say(pickPraise(big ? 'correctBig' : 'correct'), true);
       const power = r.state.fever ? Math.min(4, 2 + r.state.feverStage) : t >= 2 ? 2 : 1;
       b?.attack(power, t >= 3 || r.state.fever);
-      shake(4 + t * 3);
-      if (t >= 3) {
+      shake(4 + t * 3 + sz(0, 6));
+      if (t >= 3 || (r.state.fever && prof.hype > 0)) {
         zoomPulse();
         invertPulse();
       }
@@ -457,6 +497,12 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
       b?.setHorde(hordeFor(0, r.state));
     }
     handleEventsRef.current(r.events);
+    // 正解ごとのミニカットイン（大きなカットインが出ていないときだけ。進行は止めない）
+    if (ok && prof.miniCutin && !pauses.current.has('cutin')) {
+      const who = miniTurn.current++ % 2 ? 'girl' : 'boy';
+      const sub = r.state.combo >= 2 ? `${r.state.combo}コンボ +${r.gained.toLocaleString()}` : `+${r.gained.toLocaleString()}てん`;
+      miniRef.current?.show(who, pickPraise(big ? 'correctBig' : 'correct'), sub, r.state.fever ? 'rainbow' : big ? 'gold' : 'green');
+    }
     // feedback が変わったときだけ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [feedback]);
@@ -473,6 +519,18 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
       {/* 背景（コンボで加速、FEVER で虹色） */}
       <div className="absolute inset-0 bg-stone hype-bg-scroll opacity-70" style={{ ['--hype-bg-speed' as string]: bgSpeed }} />
       {feverOn && <div className="absolute inset-0 hype-fever-wash pointer-events-none" />}
+      {/* コンボ段階2以上・FEVER 中は、背景で光線が回る（段階が上がるほど濃く速く） */}
+      {prof.hype > 0 && (tier >= 2 || feverOn) && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
+          <div
+            className={`absolute left-1/2 top-1/2 w-[260vmax] h-[260vmax] -ml-[130vmax] -mt-[130vmax] ${feverOn ? 'hype-rays-rainbow' : 'hype-rays'}`}
+            style={{
+              opacity: (feverOn ? 0.16 : 0.06 + 0.04 * tier) * prof.hype,
+              ['--ray-speed' as string]: `${feverOn ? 8 : 24 - tier * 4}s`,
+            }}
+          />
+        </div>
+      )}
 
       <div ref={stageRef} className="relative w-full h-full flex flex-col items-center">
         <div className="w-full pt-3">
@@ -532,7 +590,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
 
         {/* たたかいの場（ブロッくん・ブロッちゃん vs ゾンビ） */}
         <div className="relative w-full h-[36%] shrink-0">
-          <BattleField ref={battleRef} fx={fx} className="w-full h-full" onDefeat={onDefeat} onShake={onShake} />
+          <BattleField ref={battleRef} fx={fx} className="w-full h-full" onDefeat={onDefeat} onShake={onShake} power={prof.hype} />
           <div className="absolute left-0 right-0 top-0 flex justify-center pointer-events-none">
             <AnimatePresence>
               {showHint && (
@@ -561,12 +619,32 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
             className="absolute inset-x-0 top-[10%] h-[50%] flex flex-col items-center justify-center pointer-events-none z-[75]"
           >
             {feedback === 'correct' ? (
-              <div className="text-[13rem] leading-none text-green-400 drop-shadow-[0_10px_0_rgba(0,0,0,0.7)]">○</div>
+              <div className="relative flex items-center justify-center">
+                {/* ○ の後ろで回る光 */}
+                {prof.hype > 0 && (
+                  <div
+                    className="absolute w-[34rem] h-[34rem] hype-rays"
+                    style={{
+                      ['--ray-a' as string]: 'rgba(125,255,106,0.6)',
+                      ['--ray-speed' as string]: '3s',
+                      maskImage: 'radial-gradient(circle, #000 25%, transparent 70%)',
+                      WebkitMaskImage: 'radial-gradient(circle, #000 25%, transparent 70%)',
+                    }}
+                  />
+                )}
+                <div
+                  className={`relative leading-none text-green-400 drop-shadow-[0_10px_0_rgba(0,0,0,0.7)] ${
+                    prof.hype >= 1 ? 'text-[19rem]' : prof.hype > 0 ? 'text-[16rem]' : 'text-[13rem]'
+                  }`}
+                >
+                  ○
+                </div>
+              </div>
             ) : (
               <>
                 <div className="text-[9rem] leading-none text-red-500 drop-shadow-[0_10px_0_rgba(0,0,0,0.7)]">×</div>
                 <div className="mc-panel !bg-black/80 !px-6 !py-2 text-3xl font-bold text-yellow-300">
-                  こたえは {currentQ.answer}
+                  答えは {currentQ.answer}
                   {hasRemainder ? ` あまり ${currentQ.remainder}` : ''} だよ！
                 </div>
               </>
@@ -575,6 +653,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
         )}
       </AnimatePresence>
 
+      <MiniCutinLayer ref={miniRef} ms={RULES.timing.miniCutinMs} />
       <BandLayer band={band} />
       <CutinLayer cutin={cutin} />
       <CountdownLayer phase={phase} />

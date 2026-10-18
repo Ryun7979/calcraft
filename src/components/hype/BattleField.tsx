@@ -38,6 +38,8 @@ interface Props {
   /** タイトル画面用：自動で戦い続ける */
   demo?: boolean;
   initialHorde?: number;
+  /** 演出の強さ 0〜1（0 で v2 のまま）。キャラのはね方・文字の大きさ */
+  power?: number;
 }
 
 interface Zombie {
@@ -54,7 +56,7 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const ASPECT = CHAR_VIEW.w / CHAR_VIEW.h;
 
 export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
-  { fx, className, onDefeat, onShake, demo = false, initialHorde = 1 },
+  { fx, className, onDefeat, onShake, demo = false, initialHorde = 1, power = 0 },
   ref,
 ) {
   const rootRef = useRef<HTMLDivElement>(null);
@@ -75,8 +77,29 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
     h: 0,
     spawnCooldown: 0,
   });
-  const cb = useRef({ onDefeat, onShake });
-  cb.current = { onDefeat, onShake };
+  const cb = useRef({ onDefeat, onShake, power });
+  cb.current = { onDefeat, onShake, power };
+  /** a（v2）から b（最大）へ power で補間 */
+  const pw = (a: number, b: number) => Math.round(a + (b - a) * cb.current.power);
+
+  /** ヒーローがズームアップしてはね、光るふちどりがつく */
+  const heroPop = (wrap: HTMLDivElement | null) => {
+    const k = cb.current.power;
+    if (!wrap || k <= 0) return;
+    wrap.animate(
+      [
+        { scale: '1', translate: '0 0' },
+        { scale: String(1 + 0.35 * k), translate: `0 ${-8 * k}%`, offset: 0.3 },
+        { scale: '1', translate: '0 0' },
+      ],
+      { duration: 520, easing: 'cubic-bezier(.2,.9,.3,1.2)' },
+    );
+    const svg = wrap.querySelector('svg');
+    if (svg) {
+      svg.classList.add('hype-glow');
+      window.setTimeout(() => svg.classList.remove('hype-glow'), 520);
+    }
+  };
 
   const heroRight = () => {
     const root = rootRef.current?.getBoundingClientRect();
@@ -140,13 +163,13 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
       z.dir.play('zHit', performance.now() / 1000);
       const c = center(z.el);
       const f = fx.current;
-      f?.ring(c.x, c.y, '#ffffff', 180);
-      f?.ring(c.x, c.y, '#ffe14d', 120);
-      f?.bang(BANGS[Math.floor(Math.random() * BANGS.length)], c.x + 30, c.y - 80, '#ff5a5a', 52);
-      f?.burst(c.x, c.y, { count: 40, colors: ['#8fbf6a', '#6d9a4e', '#e0883a', '#ffffff', '#ffe14d'], speed: 11, size: 12 });
+      f?.ring(c.x, c.y, '#ffffff', pw(180, 300));
+      f?.ring(c.x, c.y, '#ffe14d', pw(120, 200));
+      f?.bang(BANGS[Math.floor(Math.random() * BANGS.length)], c.x + 30, c.y - pw(80, 110), '#ff5a5a', pw(52, 88));
+      f?.burst(c.x, c.y, { count: pw(40, 80), colors: ['#4fb03c', '#7fd86c', '#2f7d26', '#ffffff', '#ffe14d'], speed: pw(11, 15), size: pw(12, 16) });
       f?.flash('#ffffff', 0.18, 100);
       hypeAudio.hit();
-      cb.current.onShake?.(10);
+      cb.current.onShake?.(pw(10, 18));
       // ふっとんで、ドットになって消える
       window.setTimeout(() => {
         const c2 = center(z.el);
@@ -157,8 +180,8 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
           ],
           { duration: 650, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' },
         );
-        f?.burst(c2.x, c2.y, { count: 30, colors: ['#8fbf6a', '#ffffff', '#ffe14d', '#ff8fb1'], speed: 8, size: 10 });
-        f?.popText('やっつけた!', c2.x, c2.y - 120, '#7dff6a', 34);
+        f?.burst(c2.x, c2.y, { count: 30, colors: ['#4fb03c', '#ffffff', '#ffe14d', '#ff8fb1'], speed: 8, size: 10 });
+        f?.popText('やっつけた!', c2.x, c2.y - pw(120, 150), '#7dff6a', pw(34, 56));
         window.setTimeout(() => {
           z.el.remove();
           st.current.zombies = st.current.zombies.filter((q) => q !== z);
@@ -194,12 +217,14 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
         const zr = first.el.getBoundingClientRect();
         const reach = (zr.left + zr.width * 0.35 - shoulderX) / cell;
         boy.current?.play('punch', Math.max(6, Math.min(140, reach)));
+        heroPop(boyWrap.current);
         hypeAudio.punch();
       } else if (!useBoy) {
         boy.current?.play('cheer');
       }
       if (useGirl && girlWrap.current) {
         girl.current?.play('beam');
+        heroPop(girlWrap.current);
         hypeAudio.beam();
         window.setTimeout(() => {
           const gr = girlWrap.current?.getBoundingClientRect();
@@ -226,7 +251,7 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
       if (front) {
         front.dir.play('zTaunt', performance.now() / 1000);
         const c = center(front.el);
-        fx.current?.bang('ゾンゾ〜ン♪', c.x, c.y - 120, '#b0e080', 34);
+        fx.current?.bang('ゾンゾ〜ン♪', c.x, c.y - 120, '#b0e080', pw(34, 50));
       }
     },
     play(m) {
@@ -236,6 +261,10 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
     setMood(m) {
       boy.current?.setBase(m);
       girl.current?.setBase(m);
+      // FEVER 中は虹のオーラ
+      const aura = m === 'feverDance' && cb.current.power > 0;
+      boyWrap.current?.classList.toggle('hype-aura', aura);
+      girlWrap.current?.classList.toggle('hype-aura', aura);
     },
     say(text, big = false, who) {
       const s = st.current;
@@ -321,7 +350,7 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
       {/* 地面（草ブロックの帯） */}
       <div className="absolute left-0 right-0 bottom-0 h-[6%] hype-ground" />
       <div ref={zLayerRef} className="absolute inset-0" />
-      <div ref={boyWrap} className="absolute bottom-0 left-[1%] h-full" style={{ aspectRatio: `${CHAR_VIEW.w} / ${CHAR_VIEW.h}` }}>
+      <div ref={boyWrap} className="absolute bottom-0 left-[1%] h-full origin-bottom" style={{ aspectRatio: `${CHAR_VIEW.w} / ${CHAR_VIEW.h}` }}>
         <PixelChar ref={boy} who="boy" className="w-full h-full" />
         <div className="absolute left-1/2 bottom-[66%] -translate-x-1/2">
           <PraiseBubble ref={boyBubble} tail="bottom" />
@@ -329,7 +358,7 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
       </div>
       <div
         ref={girlWrap}
-        className="absolute bottom-0 h-full"
+        className="absolute bottom-0 h-full origin-bottom"
         style={{ aspectRatio: `${CHAR_VIEW.w} / ${CHAR_VIEW.h}`, left: `calc(1% + ${0.72 * ASPECT * 100}cqh)` }}
       >
         <PixelChar ref={girl} who="girl" className="w-full h-full" />

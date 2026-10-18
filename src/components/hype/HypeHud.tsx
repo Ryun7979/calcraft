@@ -53,8 +53,13 @@ export const HypeHud = forwardRef<HypeHudHandle, Props>(function HypeHud({ index
       if (sh.score !== s.score) {
         const diff = s.score - sh.score;
         const step = Math.max(1, Math.ceil(Math.abs(diff) * Math.min(1, dt * 8)));
+        const jumped = diff > 0 && sh.score === s.score - diff;
         sh.score = diff > 0 ? Math.min(s.score, sh.score + step) : s.score;
-        if (scoreRef.current) scoreRef.current.textContent = sh.score.toLocaleString();
+        if (scoreRef.current) {
+          scoreRef.current.textContent = sh.score.toLocaleString();
+          // 点数が入りはじめたら、ドンとふくらむ
+          if (jumped) scoreRef.current.animate([{ transform: 'scale(1.35)', color: '#7dff6a' }, { transform: 'scale(1)' }], { duration: 400, easing: 'ease-out' });
+        }
       }
       if (sh.combo !== s.combo) {
         sh.combo = s.combo;
@@ -64,7 +69,7 @@ export const HypeHud = forwardRef<HypeHudHandle, Props>(function HypeHud({ index
         if (comboRef.current) {
           comboRef.current.style.opacity = s.combo > 0 ? '1' : '0.45';
           if (s.combo > 0)
-            comboRef.current.animate([{ transform: 'scale(1.6) rotate(-6deg)' }, { transform: 'scale(1)' }], { duration: 260, easing: 'ease-out' });
+            comboRef.current.animate([{ transform: 'scale(2) rotate(-8deg)' }, { transform: 'scale(1)' }], { duration: 320, easing: 'ease-out' });
         }
       }
       const fs = s.fever ? s.feverStage : -1;
@@ -120,42 +125,42 @@ export const HypeHud = forwardRef<HypeHudHandle, Props>(function HypeHud({ index
       <div className="flex flex-col gap-1 items-start">
         {challenge ? (
           <div ref={timeBoxRef} className="mc-panel !py-1 !px-4 flex items-baseline gap-3 origin-left">
-            <span className="text-base font-bold text-yellow-200 whitespace-nowrap">のこり</span>
+            <span className="text-base font-bold text-yellow-200 whitespace-nowrap">残り</span>
             <span ref={timeRef} className="mc-title text-3xl text-white">0:00</span>
           </div>
         ) : (
           <div className="mc-panel !py-1 !px-4">
-            <span className="text-lg font-bold text-white whitespace-nowrap">だい {index + 1} もん / {total}</span>
+            <span className="text-lg font-bold text-white whitespace-nowrap">第 {index + 1} 問 / {total}</span>
           </div>
         )}
         <div className="mc-panel !py-1 !px-4 flex items-center gap-3 whitespace-nowrap">
           <span className="text-base font-bold text-blue-300">Lv {grade} {OP_NAMES[op]}</span>
           {challenge && (
             <span className="text-base font-bold text-white">
-              せいかい <span ref={correctRef} className="text-yellow-300 text-xl">0</span>
+              正解 <span ref={correctRef} className="text-yellow-300 text-xl">0</span>
             </span>
           )}
         </div>
         <div className="mc-panel !py-1 !px-4 whitespace-nowrap">
           <span className="text-base font-bold text-green-300">
-            ゾンビ <span ref={zombieRef} className="inline-block text-xl text-white">0</span> たい やっつけた
+            ゾンビ <span ref={zombieRef} className="inline-block text-xl text-white">0</span> 体 やっつけた
           </span>
         </div>
       </div>
 
       <div className="flex flex-col items-center">
         <span className="text-xs text-yellow-200 tracking-widest">SCORE</span>
-        <span ref={scoreRef} className="mc-title text-3xl md:text-5xl text-white">0</span>
+        <span ref={scoreRef} className="inline-block mc-title hype-hud-score text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.6)]">0</span>
         <div ref={comboRef} className="flex items-baseline gap-2 mt-1" style={{ opacity: 0.45 }}>
-          <span ref={comboNumRef} className="mc-title text-3xl text-yellow-300">0</span>
-          <span ref={comboNameRef} className="text-xl font-bold text-yellow-200 whitespace-nowrap">コンボ</span>
-          <span ref={multRef} className="hype-sticker text-base px-2 py-0.5">×1</span>
+          <span ref={comboNumRef} className="mc-title hype-hud-combo text-yellow-300 drop-shadow-[0_5px_0_rgba(0,0,0,0.6)]">0</span>
+          <span ref={comboNameRef} className="text-2xl md:text-3xl font-bold text-yellow-200 whitespace-nowrap">コンボ</span>
+          <span ref={multRef} className="hype-sticker text-xl md:text-2xl px-3 py-0.5">×1</span>
         </div>
       </div>
 
       <div className="flex flex-col items-end gap-1">
-        <span ref={feverRef} className="mc-title text-base" style={{ color: '#ffe14d' }}>FEVER</span>
-        <div ref={gaugeRef} className="hype-gauge w-full max-w-[340px] h-8 relative overflow-hidden">
+        <span ref={feverRef} className="mc-title text-xl md:text-2xl" style={{ color: '#ffe14d' }}>FEVER</span>
+        <div ref={gaugeRef} className="hype-gauge w-full max-w-[380px] h-10 relative overflow-hidden">
           <div ref={fillRef} className="hype-gauge-fill h-full" style={{ width: '0%' }} data-fever="0" />
         </div>
       </div>
