@@ -115,3 +115,192 @@ body {
   border: 4px solid #000;
   image-rendering: pixelated;
 }
+
+/* ===== マシマシモード（hype-*）=====
+   注意：ここのクラスに display を書かない（Tailwind の flex などを打ち消してしまうため）。
+   傾けた部品にアニメを付けるときは、外側に1枚かぶせる。 */
+
+:root {
+  --hype-gold: #ffe14d;
+  --hype-grass: #6abe30;
+  --hype-ink: #1d1209;
+  --hype-sky: #3aa0e8;
+  --hype-pink: #ff8fb1;
+}
+
+/* ふきだし（ドットの角ばった形） */
+.hype-bubble {
+  position: relative;
+  background: #ffffff;
+  color: var(--hype-ink);
+  border: 4px solid var(--hype-ink);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), inset -4px -4px 0 #d9d9d9;
+  padding: 8px 16px;
+  font-weight: bold;
+  font-size: 1.5rem;
+  line-height: 1.3;
+  white-space: nowrap;
+  transform-origin: left bottom;
+}
+.hype-bubble[data-big='1'] {
+  background: var(--hype-gold);
+  font-size: 2rem;
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), inset -4px -4px 0 #c9a800;
+}
+.hype-bubble::after {
+  content: '';
+  position: absolute;
+  left: -16px;
+  bottom: 10px;
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border-left: 4px solid var(--hype-ink);
+  border-bottom: 4px solid var(--hype-ink);
+}
+.hype-bubble-bottom {
+  transform-origin: center bottom;
+}
+.hype-bubble-bottom::after {
+  left: 50%;
+  bottom: -14px;
+  margin-left: -6px;
+  border-left: none;
+  border-right: 4px solid var(--hype-ink);
+  transform: rotate(45deg);
+}
+
+/* 流れる帯（テープ） */
+.hype-tape {
+  background: repeating-linear-gradient(-45deg, #ffe14d 0 24px, #1d1209 24px 48px);
+  border-top: 4px solid #1d1209;
+  border-bottom: 4px solid #1d1209;
+}
+.hype-tape-inner {
+  background: rgba(29, 18, 9, 0.88);
+  color: #ffe14d;
+}
+
+/* カットインの大きな文字（1色の濃淡＋1方向の影） */
+.hype-shout {
+  font-family: "Press Start 2P", "DotGothic16", sans-serif;
+  color: #ffe14d;
+  text-shadow: 6px 6px 0 #a35b00, 10px 10px 0 #1d1209;
+  letter-spacing: 4px;
+}
+.hype-shout-red {
+  color: #ff5a5a;
+  text-shadow: 6px 6px 0 #8a1c1c, 10px 10px 0 #1d1209;
+}
+.hype-shout-green {
+  color: #7dff6a;
+  text-shadow: 6px 6px 0 #2c7a1c, 10px 10px 0 #1d1209;
+}
+
+/* ゲージ */
+.hype-gauge {
+  background: #1d1209;
+  border: 4px solid #000;
+  box-shadow: inset 0 0 0 2px #555;
+}
+.hype-gauge-fill {
+  background: linear-gradient(180deg, #ffe14d 0 50%, #ffb800 50% 100%);
+  transition: width 0.12s linear;
+}
+.hype-gauge-fill[data-fever='1'] {
+  background: linear-gradient(90deg, #ff4d4d, #ffb84d, #fff14d, #5dff6a, #4dd2ff, #b44dff);
+  background-size: 200% 100%;
+  animation: hype-rainbow 0.6s linear infinite;
+}
+@keyframes hype-rainbow {
+  to { background-position: 200% 0; }
+}
+
+/* ステッカー（目立たせる札） */
+.hype-sticker {
+  background: #ff5a5a;
+  color: #fff;
+  border: 4px solid #1d1209;
+  box-shadow: 4px 4px 0 #1d1209;
+  font-weight: bold;
+}
+
+/* 入力欄（マシマシ） */
+.hype-input {
+  background: #1e1e1e;
+  border: 6px solid #373737;
+  color: #fff;
+  box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.8);
+}
+.hype-input:focus {
+  outline: none;
+  border-color: #6abe30;
+  box-shadow: inset 4px 4px 0 rgba(0, 0, 0, 0.8), 0 0 0 4px #ffe14d;
+}
+
+/* 背景の石が流れる（コンボ段階で速くなる） */
+.hype-bg-scroll {
+  animation: hype-bg var(--hype-bg-speed, 40s) linear infinite;
+}
+@keyframes hype-bg {
+  from { background-position: 0 0; }
+  to { background-position: -512px 512px; }
+}
+
+/* ランクのバッジ */
+.hype-rank {
+  font-family: "Press Start 2P", sans-serif;
+  border: 8px solid #1d1209;
+  box-shadow: 8px 8px 0 #1d1209, inset -8px -8px 0 rgba(0, 0, 0, 0.25), inset 8px 8px 0 rgba(255, 255, 255, 0.35);
+  color: #fff;
+  text-shadow: 6px 6px 0 #1d1209;
+}
+
+/* 数値入力のスピンボタンを消す（マシマシの入力欄） */
+.hype-no-spin {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+.hype-no-spin::-webkit-outer-spin-button,
+.hype-no-spin::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* たたかいの場の地面（草ブロック） */
+.hype-ground {
+  background:
+    linear-gradient(180deg, #6abe30 0 35%, #4b8b24 35% 45%, #8b5a2b 45% 100%);
+  border-top: 4px solid #1d1209;
+  image-rendering: pixelated;
+}
+
+/* FEVER 中の背景（虹色がゆっくり流れる） */
+.hype-fever-wash {
+  background: linear-gradient(120deg, rgba(255, 77, 77, 0.35), rgba(255, 184, 77, 0.35), rgba(255, 241, 77, 0.3), rgba(93, 255, 106, 0.3), rgba(77, 210, 255, 0.35), rgba(180, 77, 255, 0.35), rgba(255, 77, 77, 0.35));
+  background-size: 300% 300%;
+  animation: hype-wash 2.4s linear infinite;
+  mix-blend-mode: screen;
+}
+@keyframes hype-wash {
+  from { background-position: 0% 50%; }
+  to { background-position: 300% 50%; }
+}
+
+/* タイトルの流れる文字 */
+.hype-marquee {
+  animation: hype-marquee 18s linear infinite;
+}
+@keyframes hype-marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+/* スタートボタンが光る */
+.hype-start {
+  animation: hype-start-glow 1s ease-in-out infinite;
+}
+@keyframes hype-start-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 #ffe14d); }
+  50% { filter: drop-shadow(0 0 18px #ffe14d); }
+}

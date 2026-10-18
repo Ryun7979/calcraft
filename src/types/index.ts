@@ -15,3 +15,20 @@ export interface AnsweredQuestion extends Question {
   userRemainder?: number | null;
   isCorrect: boolean;
 }
+
+// --- 演出モード ---
+export type EffectMode = 'calm' | 'hype';
+export type EffectIntensity = 'low' | 'normal' | 'max';
+export type QuestionCount = 4 | 10 | 20;
+/** れんしゅう（問題数を決める）／チャレンジ（時間内に何問とけるか） */
+export type PlayMode = 'practice' | 'challenge';
+export type ChallengeMinutes = 1 | 2 | 3;
+
+export interface Settings {
+  effectMode: EffectMode;
+  intensity: EffectIntensity;
+  bgm: boolean;
+  questionCount: QuestionCount;
+  playMode: PlayMode;
+  challengeMinutes: ChallengeMinutes;
+}

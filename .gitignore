@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# 未採用の素材（Gemini で作ったものなど）
+_inbox/

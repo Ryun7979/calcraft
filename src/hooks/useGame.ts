@@ -4,7 +4,24 @@ import { TOTAL_QUESTIONS } from '../constants';
 import { generateQuestion } from '../lib/gameLogic';
 import { playClickSound, playCorrectSound, playIncorrectSound } from '../lib/audio';
 
-export const useGame = () => {
+export interface UseGameOptions {
+  /** 1回の問題数（省略時は TOTAL_QUESTIONS）。startGame の時点の値を使う */
+  questionCount?: number;
+  /** 正解・不正解を見せてから次の問題に進むまでの ms（省略時は 1010） */
+  feedbackMs?: number;
+  /** false にすると、ここで鳴らしている効果音（mp3）を鳴らさない。マシマシモードは自前の音を使う */
+  builtinSfx?: boolean;
+  /** true を返すあいだ、次の問題（または結果画面）へ進まずに待つ。大きなカットインの最中に使う */
+  holdAdvance?: () => boolean;
+}
+
+export const useGame = (options: UseGameOptions = {}) => {
+  const optsRef = useRef(options);
+  optsRef.current = options;
+  const sfx = (play: () => void) => {
+    if (optsRef.current.builtinSfx !== false) play();
+  };
+
   const [gameState, setGameState] = useState<GameState>('menu');
   const [selectedGrade, setSelectedGrade] = useState<Grade>(1);
   const [selectedOp, setSelectedOp] = useState<Operation>('add');
@@ -32,7 +49,7 @@ export const useGame = () => {
 
   const handleHint = useCallback(() => {
     if (feedback !== null || showHint) return;
-    playClickSound();
+    sfx(playClickSound);
     const currentQ = questions[currentIndex];
     const ansStr = currentQ.answer.toString();
     let text = '';
@@ -51,15 +68,16 @@ export const useGame = () => {
   }, [currentIndex, feedback, questions, showHint]);
 
   const startGame = useCallback((isRetry = false) => {
-    playClickSound();
+    sfx(playClickSound);
+    const count = optsRef.current.questionCount ?? TOTAL_QUESTIONS;
     
     let nextGrade = selectedGrade;
     let change: 'up' | 'down' | null = null;
 
-    if (isRetry && answers.length === TOTAL_QUESTIONS) {
+    if (isRetry && answers.length > 0 && answers.length === questions.length) {
       const correctCount = answers.filter(a => a.isCorrect).length;
-      const isFullMarks = correctCount === TOTAL_QUESTIONS;
-      const isLowScore = correctCount <= Math.floor(TOTAL_QUESTIONS / 2); // 50%以下
+      const isFullMarks = correctCount === answers.length;
+      const isLowScore = correctCount <= Math.floor(answers.length / 2); // 50%以下
 
       if (isFullMarks) {
         const nextCount = consecutiveFullMarks + 1;
@@ -102,13 +120,13 @@ export const useGame = () => {
       setTimeout(() => setLevelChange(null), 3000);
     }
 
-    const newQuestions = Array.from({ length: TOTAL_QUESTIONS }, () => generateQuestion(nextGrade, selectedOp));
+    const newQuestions = Array.from({ length: count }, () => generateQuestion(nextGrade, selectedOp));
     setQuestions(newQuestions);
     setAnswers([]);
     setCurrentIndex(0);
     setFeedback(null);
     setGameState('playing');
-  }, [selectedGrade, selectedOp, answers, consecutiveFullMarks, consecutiveLowScore, hasLeveledUp]);
+  }, [selectedGrade, selectedOp, answers, questions.length, consecutiveFullMarks, consecutiveLowScore, hasLeveledUp]);
 
   const handleAnswer = useCallback((value: string, remainderValue: string = '', skipped: boolean = false) => {
     if (feedback !== null) return;
@@ -124,11 +142,7 @@ export const useGame = () => {
       isCorrect = !isNaN(parsedRemainder) && parsedRemainder === currentQ.remainder;
     }
 
-    if (isCorrect) {
-      playCorrectSound();
-    } else {
-      playIncorrectSound();
-    }
+    sfx(isCorrect ? playCorrectSound : playIncorrectSound);
 
     setFeedback(isCorrect ? 'correct' : 'incorrect');
 
@@ -139,20 +153,31 @@ export const useGame = () => {
       isCorrect,
     };
 
-    setTimeout(() => {
+    const advance = () => {
+      if (optsRef.current.holdAdvance?.()) {
+        setTimeout(advance, 100);
+        return;
+      }
       setAnswers((prev) => [...prev, answeredQ]);
       setFeedback(null);
       
-      if (currentIndex + 1 < TOTAL_QUESTIONS) {
+      if (currentIndex + 1 < questions.length) {
         setCurrentIndex((prev) => prev + 1);
       } else {
         setGameState('result');
       }
-    }, 1010); // 微調整
+    };
+    setTimeout(advance, optsRef.current.feedbackMs ?? 1010); // 微調整
   }, [currentIndex, feedback, questions]);
 
+  /** 時間切れなどで、のこりの問題をとばして結果画面へ（チャレンジモード用） */
+  const endGame = useCallback(() => {
+    setFeedback(null);
+    setGameState('result');
+  }, []);
+
   const backToMenu = useCallback(() => {
-    playClickSound();
+    sfx(playClickSound);
     setGameState('menu');
   }, []);
 
@@ -173,6 +198,7 @@ export const useGame = () => {
     startGame,
     handleAnswer,
     backToMenu,
+    endGame,
   };
 };
 

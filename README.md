@@ -1,20 +1,27 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# CALCRAFT（さんすうドリル）
 
-# Run and deploy your AI Studio app
+小学生向けの、マイクラ風の四則演算ドリルです。
 
-This contains everything you need to run your app locally.
+- **ひかえめモード**：しずかな従来の演出。
+- **マシマシモード**：1操作ごとにド派手にほめまくる演出。ブロッくんとブロッちゃんが、正解するたびにゾンビをやっつける。コンボ、FEVER、ランク発表。
+  - **れんしゅう**（4 / 10 / 20 もん）と **チャレンジ**（1 / 2 / 3 ぷんで なんもん とけるか）。
 
-View your app in AI Studio: https://ai.studio/apps/67513a17-1f0b-4a42-9665-de60394646b7
+メニュー右上の歯車（オプション）から切り替えられます。
 
-## Run Locally
+## 動かしかた
 
-**Prerequisites:**  Node.js
+必要なもの：Node.js
 
+```bash
+npm install
+npm run dev
+```
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+http://localhost:3000 を開きます。
+
+## ドキュメント
+
+- `docs/spec.md` … マシマシモードの仕様
+- `docs/issues.md` … あとで直す不具合・改善
+- `docs/character/preview.html` … キャラクターの動きの確認用デモ（ブラウザで直接開ける）
+- `CLAUDE.md` / `LEARNINGS.md` … 開発のメモ
