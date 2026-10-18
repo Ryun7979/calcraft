@@ -2,6 +2,7 @@ import React, { forwardRef, useImperativeHandle, useRef } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { PixelChar, PixelCharHandle } from './PixelChar';
 import { RULES } from '../../lib/hype/rules';
+import { poseUrl } from '../../lib/hype/assets';
 
 // カットインと帯。どれも pointer-events: none（入力をさまたげない）。
 // 画面の主要部分を隠す大きなカットイン（tier / fever / feverStage / combo）のあいだは、呼ぶ側で進行（FEVER ゲージの減り）を止める。
@@ -96,6 +97,28 @@ const BigChars: React.FC<{ motionName: 'shout' | 'feverDance'; delay?: number; s
       transition={{ delay: delay + 0.08, type: 'spring', stiffness: 260, damping: 14 }}
     >
       <PixelChar who="girl" className="w-full h-full hype-glow" initial={motionName} />
+    </motion.div>
+  </>
+);
+
+/** 左右から飛び込む、Gemini で描いた決めポーズの絵（FEVER 突入） */
+const BigPoses: React.FC<{ delay?: number }> = ({ delay = 0 }) => (
+  <>
+    <motion.div
+      className="absolute left-[1%] bottom-[4%] h-[78%] w-[46%]"
+      initial={{ x: '-160%', rotate: -30, scale: 0.5 }}
+      animate={{ x: '0%', rotate: -4, scale: 1 }}
+      transition={{ delay, type: 'spring', stiffness: 260, damping: 13 }}
+    >
+      <img src={poseUrl('fever-boy')} alt="" className="w-full h-full object-bottom hype-pose hype-glow" draggable={false} />
+    </motion.div>
+    <motion.div
+      className="absolute right-[1%] bottom-[4%] h-[78%] w-[46%]"
+      initial={{ x: '160%', rotate: 30, scale: 0.5 }}
+      animate={{ x: '0%', rotate: 4, scale: 1 }}
+      transition={{ delay: delay + 0.08, type: 'spring', stiffness: 260, damping: 13 }}
+    >
+      <img src={poseUrl('fever-girl')} alt="" className="w-full h-full object-bottom hype-pose hype-glow" style={{ animationDelay: '0.2s' }} draggable={false} />
     </motion.div>
   </>
 );
@@ -195,7 +218,7 @@ const FeverCutin: React.FC = () => {
         animate={{ scaleY: 1 }}
         transition={{ delay: 0.8, duration: 0.2 }}
       />
-      <BigChars motionName="feverDance" delay={0.95} size="w-[36%] h-[90%]" />
+      <BigPoses delay={0.95} />
       <div className="relative flex flex-col items-center">
         <SlamLetters text="FEVER!!" cls="hype-shout hype-shout-rainbow text-7xl md:text-[11rem] leading-none" delay={1.6} step={0.08} />
         <motion.span

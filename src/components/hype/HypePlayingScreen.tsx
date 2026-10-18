@@ -24,6 +24,7 @@ import { Mods } from '../../lib/hype/skills';
 import { hypeSize, INTENSITY, RULES } from '../../lib/hype/rules';
 import { hypeAudio } from '../../lib/hype/audio';
 import { pickPraise } from '../../lib/hype/praise';
+import { TileName, tileStyle } from '../../lib/hype/assets';
 
 export interface HypeSummary {
   state: HypeState;
@@ -67,6 +68,8 @@ const center = (el: Element | null | undefined) => {
   return r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : { x: window.innerWidth / 2, y: window.innerHeight / 2 };
 };
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
+/** コンボ段階ごとの背景の柄（掘るほど宝石が出てくる） */
+const BG_BY_TIER: readonly TileName[] = ['stone', 'ore-gold', 'ore-diamond', 'ore-emerald'];
 
 export const HypePlayingScreen: React.FC<Props> = (props) => {
   const { currentIndex, selectedGrade, selectedOp, questions, feedback, showHint, hintText, levelChange, intensity, fx, summaryRef, holdRef } = props;
@@ -260,7 +263,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
           showBand(ev.double ? `W ボーナス!! スコア ×${m}!!` : `ボーナスタイム!! スコア ×${m}`, ev.double ? 'rainbow' : 'gold');
           fx.current?.flash('#ffd84d', 0.35, 220);
           fx.current?.ring(center.x, center.y, '#ffd84d', window.innerWidth * 0.55);
-          fx.current?.burst(center.x, center.y, { count: 60, colors: ['#ffd84d', '#fff6b0', '#ffffff', '#ffb84d'], speed: 13, size: 11 });
+          fx.current?.burst(center.x, center.y, { count: 60, colors: ['#ffd84d', '#fff6b0', '#ffffff', '#ffb84d'], speed: 13, size: 11, sprites: ['coin', 'sparkle'], spriteRate: 0.5 });
           fireworks(ev.double ? 8 : 4, 60);
           battleRef.current?.say(ev.double ? 'ダブルボーナス！！' : 'ボーナスタイム！！', true, 'girl');
           break;
@@ -437,7 +440,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
       hypeAudio.golden();
       fx.current?.flash('#ffd84d', 0.25, 160);
       fx.current?.ring(c.x, c.y, '#ffd84d', sz(260, 420));
-      fx.current?.burst(c.x, c.y, { count: sz(40, 70), colors: ['#ffd84d', '#fff6b0', '#ffffff'], speed: sz(9, 12), size: sz(9, 12) });
+      fx.current?.burst(c.x, c.y, { count: sz(40, 70), colors: ['#ffd84d', '#fff6b0', '#ffffff'], speed: sz(9, 12), size: sz(9, 12), sprites: ['coin', 'sparkle'], spriteRate: 0.5 });
       shake(6);
       showBand('ゴールデン問題!! 正解でボーナスタイム！', 'gold');
       battleRef.current?.say(pickPraise('golden'), true, 'boy');
@@ -470,7 +473,7 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
   const onErase = useCallback((el: HTMLElement | null) => {
     const c = center(el);
     hypeAudio.erase();
-    fx.current?.burst(c.x, c.y, { count: 8, colors: ['#bbbbbb', '#ffffff'], speed: 3, size: 7 });
+    fx.current?.burst(c.x, c.y, { count: 8, colors: ['#bbbbbb', '#ffffff'], speed: 3, size: 7, sprites: [] });
     battleRef.current?.say(pickPraise('erase'));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -512,7 +515,12 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
       fx.current?.firework(c.x, c.y);
       fx.current?.ring(c.x, c.y, '#7dff6a', sz(260, 420));
       if (prof.hype > 0) fx.current?.ring(c.x, c.y, '#ffffff', sz(260, 600));
-      fx.current?.burst(c.x, c.y, { count: sz(40, 80) + t * sz(20, 30), speed: sz(10, 14) + t, size: sz(11, 14) });
+      fx.current?.burst(c.x, c.y, {
+        count: sz(40, 80) + t * sz(20, 30),
+        speed: sz(10, 14) + t,
+        size: sz(11, 14),
+        sprites: r.state.fever ? ['diamond', 'emerald', 'star', 'heart'] : ['star', 'heart', 'sparkle'],
+      });
       if (big) {
         fx.current?.firework(c.x - window.innerWidth * 0.28, c.y - 40);
         fx.current?.firework(c.x + window.innerWidth * 0.28, c.y - 40);
@@ -570,11 +578,12 @@ export const HypePlayingScreen: React.FC<Props> = (props) => {
   const onShake = useCallback((amp: number) => shake(amp), [prof.shake]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const bgSpeed = `${Math.max(3, 40 / (1 + tier * 1.8))}s`;
+  const bgTile: TileName = feverOn ? (mods.galaxy ? 'amethyst' : 'magma') : BG_BY_TIER[Math.min(tier, BG_BY_TIER.length - 1)];
 
   return (
     <motion.div key="hype-playing" {...pageTransition} className="w-full h-full relative overflow-hidden">
       {/* 背景（コンボで加速、FEVER で虹色） */}
-      <div className="absolute inset-0 bg-stone hype-bg-scroll opacity-70" style={{ ['--hype-bg-speed' as string]: bgSpeed }} />
+      <div className="absolute inset-0 hype-bg-scroll opacity-70" style={{ ...tileStyle(bgTile), ['--hype-bg-speed' as string]: bgSpeed }} />
       {props.bgClass && <div className={`absolute inset-0 pointer-events-none ${props.bgClass}`} />}
       {feverOn && <div className={`absolute inset-0 pointer-events-none ${mods.galaxy ? 'hype-fever-galaxy' : 'hype-fever-wash'}`} />}
       {bonusOn && <div className="absolute inset-0 hype-bonus-wash pointer-events-none" />}

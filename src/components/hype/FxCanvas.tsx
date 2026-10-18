@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { INTENSITY, IntensityProfile, RULES } from '../../lib/hype/rules';
+import { preloadHypeImages, SpriteName, spriteImage, uiImage } from '../../lib/hype/assets';
 
 // 演出用の Canvas。画面全体に重ね、クリックは下へ通す（pointer-events: none）。
 // React の再描画には乗せず、ref の命令で描く。座標はウィンドウ座標（getBoundingClientRect の値をそのまま使える）。
@@ -11,7 +12,15 @@ export interface BurstOptions {
   size?: number;
   gravity?: number;
   life?: number;
+  /** 絵の粒（星・ハートなど）。省略すると星とキラキラを少しまぜる。[] で絵なし */
+  sprites?: readonly SpriteName[];
+  /** 絵の粒の割合 0〜1 */
+  spriteRate?: number;
 }
+
+/** 何も指定しないときにまぜる絵の粒 */
+const DEFAULT_SPRITES: readonly SpriteName[] = ['star', 'sparkle'];
+const CONFETTI_SPRITES: readonly SpriteName[] = ['heart', 'star', 'note', 'diamond', 'emerald', 'coin'];
 
 export interface FxHandle {
   burst(x: number, y: number, opts?: BurstOptions): void;
@@ -111,6 +120,10 @@ interface Particle {
   font?: number;
   /** 文字のとき：true ならポンと大きくなって消える */
   pop?: boolean;
+  /** 絵の粒のとき：絵・回転・回転の速さ */
+  sprite?: SpriteName;
+  rot?: number;
+  vr?: number;
 }
 
 const PALETTE = {
@@ -149,10 +162,13 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
       burst(x, y, o = {}) {
         const n = scaled(o.count ?? 16);
         const colors = o.colors ?? s.palette ?? PALETTE.pixel;
+        const sprites = o.sprites ?? DEFAULT_SPRITES;
+        const rate = sprites.length ? (o.spriteRate ?? (o.sprites ? 0.4 : 0.2)) : 0;
         for (let i = 0; i < n; i++) {
           const a = Math.random() * Math.PI * 2;
           const sp = (o.speed ?? 6) * (0.4 + Math.random() * 0.8);
           const life = (o.life ?? 0.8) * (0.7 + Math.random() * 0.6);
+          const sprite = Math.random() < rate ? sprites[i % sprites.length] : undefined;
           push({
             x,
             y,
@@ -161,8 +177,11 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
             g: o.gravity ?? 0.25,
             size: Math.round((o.size ?? 8) * (0.6 + Math.random() * 0.8)),
             color: colors[i % colors.length],
-            life,
-            max: life,
+            life: sprite ? life * 1.3 : life,
+            max: sprite ? life * 1.3 : life,
+            sprite,
+            rot: Math.random() * Math.PI * 2,
+            vr: (Math.random() - 0.5) * 0.3,
           });
         }
       },
@@ -183,7 +202,9 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
           }
           const a = (i / n) * Math.PI * 2;
           const sp = 7 + Math.random() * 3;
-          push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0.12, size: 7, color: colors[i % colors.length], life: 1.1, max: 1.1 });
+          // 5つに1つはキラキラの絵（外側へ大きく飛ぶ）
+          const sprite: SpriteName | undefined = i % 5 === 0 ? (i % 10 === 0 ? 'sparkle' : 'star') : undefined;
+          push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, g: 0.12, size: 7, color: colors[i % colors.length], life: 1.1, max: 1.1, sprite, rot: a, vr: 0.08 });
         }
       },
       confetti(count = 80) {
@@ -199,6 +220,10 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
             color: (s.palette ?? PALETTE.rainbow)[i % (s.palette ?? PALETTE.rainbow).length],
             life: 3,
             max: 3,
+            // 3つに1つはハート・星・音符などの絵がひらひら落ちる
+            sprite: i % 3 === 0 ? CONFETTI_SPRITES[(i / 3) % CONFETTI_SPRITES.length] : undefined,
+            rot: Math.random() * Math.PI * 2,
+            vr: (Math.random() - 0.5) * 0.12,
           });
         }
       },
@@ -280,6 +305,7 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
     const canvas = canvasRef.current!;
     const ctx = canvas.getContext('2d')!;
     const s = st.current;
+    preloadHypeImages();
     let raf = 0;
     let last = performance.now();
 
@@ -383,6 +409,17 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
           ctx.strokeText(p.text, p.x, p.y);
           ctx.fillStyle = p.color;
           ctx.fillText(p.text, p.x, p.y);
+        } else if (p.sprite && spriteImage(p.sprite)) {
+          // 絵の粒：出た瞬間にポンと大きくなり、くるくる回る
+          const img = spriteImage(p.sprite)!;
+          p.rot = (p.rot ?? 0) + (p.vr ?? 0) * k;
+          const born = Math.min(1, (1 - p.life / p.max) * 8);
+          const d = Math.round(Math.max(22, p.size * 3) * (0.5 + 0.5 * born));
+          ctx.save();
+          ctx.translate(Math.round(p.x), Math.round(p.y));
+          ctx.rotate(p.rot);
+          ctx.drawImage(img, -d / 2, -d / 2, d, d);
+          ctx.restore();
         } else {
           ctx.fillStyle = '#1d1209';
           ctx.fillRect(Math.round(p.x - p.size / 2) - 2, Math.round(p.y - p.size / 2) - 2, p.size + 4, p.size + 4);
@@ -464,12 +501,20 @@ export const FxCanvas = forwardRef<FxHandle>(function FxCanvas(_, ref) {
           }
           ctx.closePath();
         };
-        star(1);
-        ctx.fillStyle = '#1d1209';
-        ctx.fill();
-        star(0.88);
-        ctx.fillStyle = b.color;
-        ctx.fill();
+        const bangImg = uiImage('bang');
+        if (bangImg) {
+          // Gemini の爆発の絵を、文字の長さに合わせて横にのばして敷く
+          const bw = R * 2.6;
+          const bh = R * 1.6;
+          ctx.drawImage(bangImg, -bw / 2, -bh / 2, bw, bh);
+        } else {
+          star(1);
+          ctx.fillStyle = '#1d1209';
+          ctx.fill();
+          star(0.88);
+          ctx.fillStyle = b.color;
+          ctx.fill();
+        }
         ctx.font = `bold ${b.size}px "DotGothic16", "Press Start 2P", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';

@@ -1,28 +1,31 @@
 import React, { useEffect, useRef } from 'react';
+import { TileName, tileImage } from '../../lib/hype/assets';
 
-// タイトル画面の背景：ドットのブロック（草・土・石・金・ダイヤ・TNT）がふってくる。
+// タイトル画面の背景：ドットのブロック（Gemini のタイル）がふってくる。
 // 画面の一番うしろに置き、クリックは通す。
 
-type Pattern = { colors: string[]; rows: string[] };
-
-// 4×4 マスの模様。数字は colors の番号
-const BLOCKS: Pattern[] = [
-  { colors: ['#6abe30', '#4b8b24', '#a0693a', '#7a4e2a'], rows: ['0101', '1002', '2232', '3223'] }, // 草
-  { colors: ['#a0693a', '#7a4e2a'], rows: ['0100', '0001', '1000', '0010'] }, // 土
-  { colors: ['#8a8a8a', '#6e6e6e', '#a8a8a8'], rows: ['0120', '1002', '0210', '2001'] }, // 石
-  { colors: ['#ffd84d', '#c9a800', '#fff6b0'], rows: ['0210', '1002', '0021', '2100'] }, // 金
-  { colors: ['#5ee8e0', '#2fb3ad', '#d8fffd'], rows: ['0201', '1020', '0102', '2010'] }, // ダイヤ
-  { colors: ['#e84a4a', '#ffffff', '#1d1209'], rows: ['0000', '1221', '1221', '0000'] }, // TNT
+const TILES: readonly TileName[] = [
+  'grass', 'dirt', 'stone', 'ore-gold', 'ore-diamond', 'tnt',
+  'ore-emerald', 'ore-ruby', 'amethyst', 'planks', 'brick', 'leaves', 'glow',
 ];
+
+/** 絵の読みこみ前に使う色（ブロックごとに1色） */
+const FALLBACK: Record<TileName, string> = {
+  grass: '#6abe30', dirt: '#a0693a', stone: '#8a8a8a', cobble: '#7a7a7a',
+  'ore-gold': '#ffd84d', 'ore-diamond': '#5ee8e0', 'ore-emerald': '#3ccf5a', 'ore-ruby': '#e84a4a',
+  nether: '#7a1f1f', magma: '#ff8a1f', glow: '#ffe7a0', amethyst: '#9a5ae0',
+  planks: '#c08a4a', brick: '#a8483a', tnt: '#e84a4a', leaves: '#3f8a24',
+};
 
 interface Drop {
   x: number;
   y: number;
   vy: number;
   size: number;
-  kind: number;
+  kind: TileName;
   sway: number;
   phase: number;
+  spin: number;
 }
 
 export const BlockRain: React.FC<{ className?: string }> = ({ className }) => {
@@ -51,10 +54,11 @@ export const BlockRain: React.FC<{ className?: string }> = ({ className }) => {
         x: Math.random() * w,
         y: y ?? -60,
         vy: 40 + Math.random() * 90,
-        size: 24 + Math.round(Math.random() * 4) * 8,
-        kind: Math.floor(Math.random() * BLOCKS.length),
+        size: 32 + Math.round(Math.random() * 4) * 8,
+        kind: TILES[Math.floor(Math.random() * TILES.length)],
         sway: 10 + Math.random() * 20,
         phase: Math.random() * Math.PI * 2,
+        spin: (Math.random() - 0.5) * 0.8,
       });
     for (let i = 0; i < 26; i++) add(Math.random() * h);
 
@@ -64,6 +68,8 @@ export const BlockRain: React.FC<{ className?: string }> = ({ className }) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       ctx.clearRect(0, 0, w, h);
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalAlpha = 0.6;
       for (let i = drops.length - 1; i >= 0; i--) {
         const d = drops[i];
         d.y += d.vy * dt;
@@ -74,17 +80,19 @@ export const BlockRain: React.FC<{ className?: string }> = ({ className }) => {
         }
         const x = Math.round(d.x + Math.sin(now / 700 + d.phase) * d.sway);
         const y = Math.round(d.y);
-        const b = BLOCKS[d.kind];
-        const c = d.size / 4;
-        ctx.globalAlpha = 0.55;
+        const half = d.size / 2;
+        ctx.save();
+        ctx.translate(x + half, y + half);
+        ctx.rotate(Math.sin(now / 900 + d.phase) * d.spin);
         ctx.fillStyle = '#1d1209';
-        ctx.fillRect(x - 3, y - 3, d.size + 6, d.size + 6);
-        b.rows.forEach((row, j) => {
-          for (let k = 0; k < 4; k++) {
-            ctx.fillStyle = b.colors[Number(row[k])];
-            ctx.fillRect(x + k * c, y + j * c, c, c);
-          }
-        });
+        ctx.fillRect(-half - 3, -half - 3, d.size + 6, d.size + 6);
+        const img = tileImage(d.kind);
+        if (img) ctx.drawImage(img, -half, -half, d.size, d.size);
+        else {
+          ctx.fillStyle = FALLBACK[d.kind];
+          ctx.fillRect(-half, -half, d.size, d.size);
+        }
+        ctx.restore();
       }
       ctx.globalAlpha = 1;
       raf = requestAnimationFrame(draw);

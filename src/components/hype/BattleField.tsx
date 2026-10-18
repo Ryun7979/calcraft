@@ -148,7 +148,7 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
       { duration: 420, easing: 'ease-out' },
     );
     const c = center(el);
-    fx.current?.burst(c.x, c.y + c.h * 0.3, { count: 12, colors: ['#a0693a', '#7a4e2a', '#6abe30'], speed: 5, size: 8 });
+    fx.current?.burst(c.x, c.y + c.h * 0.3, { count: 12, colors: ['#a0693a', '#7a4e2a', '#6abe30'], speed: 5, size: 8, sprites: ['block'], spriteRate: 0.4 });
     return z;
   };
 
@@ -167,7 +167,7 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
       f?.ring(c.x, c.y, '#ffffff', pw(180, 300));
       f?.ring(c.x, c.y, '#ffe14d', pw(120, 200));
       f?.bang(BANGS[Math.floor(Math.random() * BANGS.length)], c.x + 30, c.y - pw(80, 110), '#ff5a5a', pw(52, 88));
-      f?.burst(c.x, c.y, { count: pw(40, 80), colors: ['#4fb03c', '#7fd86c', '#2f7d26', '#ffffff', '#ffe14d'], speed: pw(11, 15), size: pw(12, 16) });
+      f?.burst(c.x, c.y, { count: pw(40, 80), colors: ['#4fb03c', '#7fd86c', '#2f7d26', '#ffffff', '#ffe14d'], speed: pw(11, 15), size: pw(12, 16), sprites: ['block', 'star', 'emerald'] });
       f?.flash('#ffffff', 0.18, 100);
       hypeAudio.hit();
       cb.current.onShake?.(pw(10, 18));
@@ -181,7 +181,7 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
           ],
           { duration: 650, easing: 'cubic-bezier(.2,.7,.4,1)', fill: 'forwards' },
         );
-        f?.burst(c2.x, c2.y, { count: 30, colors: ['#4fb03c', '#ffffff', '#ffe14d', '#ff8fb1'], speed: 8, size: 10 });
+        f?.burst(c2.x, c2.y, { count: 30, colors: ['#4fb03c', '#ffffff', '#ffe14d', '#ff8fb1'], speed: 8, size: 10, sprites: ['heart', 'star'] });
         f?.popText('やっつけた!', c2.x, c2.y - pw(120, 150), '#7dff6a', pw(34, 56));
         window.setTimeout(() => {
           z.el.remove();

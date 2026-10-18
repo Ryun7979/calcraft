@@ -128,42 +128,59 @@ body {
   --hype-pink: #ff8fb1;
 }
 
-/* ふきだし（ドットの角ばった形） */
+/* ふきだし（Gemini のドットの枠を9分割で使う。1ドット = 3px） */
 .hype-bubble {
   position: relative;
-  background: #ffffff;
+  background: transparent;
   color: var(--hype-ink);
-  border: 4px solid var(--hype-ink);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), inset -4px -4px 0 #d9d9d9;
-  padding: 8px 16px;
+  border: 12px solid transparent;
+  border-image: url('./assets/hype/ui/bubble.png') 4 fill / 12px / 0 stretch;
+  image-rendering: pixelated;
+  filter: drop-shadow(4px 4px 0 rgba(0, 0, 0, 0.5));
+  padding: 0 6px;
   font-weight: bold;
   font-size: 1.9rem;
   line-height: 1.3;
   white-space: nowrap;
   transform-origin: left bottom;
 }
+/* 大きなほめことばは、黄色いトゲトゲの叫びのふきだし（のばして敷く） */
 .hype-bubble[data-big='1'] {
-  background: var(--hype-gold);
+  border: none;
+  border-image: none;
+  background: url('./assets/hype/ui/shout.png') center / 100% 100% no-repeat;
+  padding: 0.9em 1.6em;
   font-size: 2.6rem;
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.5), inset -4px -4px 0 #c9a800;
+}
+.hype-bubble[data-big='1']::after {
+  content: none;
 }
 .hype-bubble::after {
   content: '';
   position: absolute;
-  left: -16px;
-  bottom: 10px;
+  left: -24px;
+  bottom: 0;
   width: 12px;
   height: 12px;
-  background: inherit;
+  background: #ffffff;
   border-left: 4px solid var(--hype-ink);
   border-bottom: 4px solid var(--hype-ink);
+}
+
+/* 金のふちの札（Gemini の枠を9分割。1ドット = 2px） */
+.hype-plate {
+  border: 10px solid transparent;
+  border-image: url('./assets/hype/ui/plate.png') 5 fill / 10px / 0 stretch;
+  image-rendering: pixelated;
+  color: var(--hype-gold);
+  text-shadow: 2px 2px 0 var(--hype-ink);
 }
 .hype-bubble-bottom {
   transform-origin: center bottom;
 }
 .hype-bubble-bottom::after {
   left: 50%;
-  bottom: -14px;
+  bottom: -26px;
   margin-left: -6px;
   border-left: none;
   border-right: 4px solid var(--hype-ink);
@@ -355,6 +372,16 @@ body {
 /* キャラの光るふちどり（攻撃中）と、FEVER の虹のオーラ */
 .hype-glow {
   filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 14px #ffe14d) drop-shadow(0 0 28px #ffffff);
+}
+/* 決めポーズの絵（ドットのまま拡大し、ぴょこぴょこはずむ） */
+.hype-pose {
+  image-rendering: pixelated;
+  object-fit: contain;
+  animation: hype-pose-bob 0.42s steps(2, jump-none) infinite alternate;
+}
+@keyframes hype-pose-bob {
+  from { transform: translateY(0); }
+  to { transform: translateY(-4%); }
 }
 .hype-aura {
   animation: hype-aura 0.7s linear infinite;

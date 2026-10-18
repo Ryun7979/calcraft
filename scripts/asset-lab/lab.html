@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>素材の加工台</title>
+<style>
+  body { margin: 0; padding: 12px; background: #2b2b2b; color: #eee; font: 13px sans-serif; }
+  #out { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+  figure { margin: 0; padding: 6px; background: #3a3a3a; }
+  figcaption { margin-top: 4px; }
+  canvas.view { image-rendering: pixelated; display: block;
+    background: repeating-conic-gradient(#888 0 25%, #bbb 0 50%) 0 0 / 16px 16px; }
+</style>
+</head>
+<body>
+<div id="out"></div>
+<script>
+// ブラウザの JS から呼ぶ道具。Gemini の絵（JPEG）を読み、切り分け・ドット化・切り抜きをして PNG で保存する。
+const $out = document.getElementById('out');
+
+const newCanvas = (w, h) => Object.assign(document.createElement('canvas'), { width: w, height: h });
+const ctxOf = (cv) => cv.getContext('2d', { willReadFrequently: true });
+
+/** 絵を読む（_inbox/ からの相対でも可） */
+async function load(path) {
+  const img = new Image();
+  img.src = (path.includes('/') ? '/' : '/_inbox/') + path + '?t=' + Date.now();
+  await img.decode();
+  const cv = newCanvas(img.naturalWidth, img.naturalHeight);
+  ctxOf(cv).drawImage(img, 0, 0);
+  return cv;
+}
+
+const isBg = (d, i, white) => d[i + 3] < 20 || (d[i] >= white && d[i + 1] >= white && d[i + 2] >= white);
+
+/** 白い余白で区切られた絵を見つける（XY カット）。[{x,y,w,h}] を上→下、左→右の順で返す */
+function boxes(cv, { white = 232, minGap = 6, minSize = 24 } = {}) {
+  const { width: W, height: H } = cv;
+  const d = ctxOf(cv).getImageData(0, 0, W, H).data;
+  const emptyCol = (x, y0, y1) => { for (let y = y0; y < y1; y++) if (!isBg(d, (y * W + x) * 4, white)) return false; return true; };
+  const emptyRow = (y, x0, x1) => { for (let x = x0; x < x1; x++) if (!isBg(d, (y * W + x) * 4, white)) return false; return true; };
+  const runs = (n, empty) => {
+    const out = []; let s = -1, gap = 0;
+    for (let i = 0; i < n; i++) {
+      if (!empty(i)) { if (s < 0) s = i; gap = 0; }
+      else if (s >= 0 && ++gap >= minGap) { out.push([s, i - gap + 1]); s = -1; gap = 0; }
+    }
+    if (s >= 0) out.push([s, n - gap]);
+    return out;
+  };
+  const cut = (x0, y0, x1, y1, depth) => {
+    const rs = runs(y1 - y0, (i) => emptyRow(y0 + i, x0, x1)).map(([a, b]) => [y0 + a, y0 + b]);
+    const res = [];
+    for (const [ya, yb] of rs) {
+      const cs = runs(x1 - x0, (i) => emptyCol(x0 + i, ya, yb)).map(([a, b]) => [x0 + a, x0 + b]);
+      for (const [xa, xb] of cs) {
+        if (xb - xa < minSize || yb - ya < minSize) continue;
+        if ((cs.length > 1 || rs.length > 1) && depth < 4) res.push(...cut(xa, ya, xb, yb, depth + 1));
+        else res.push({ x: xa, y: ya, w: xb - xa, h: yb - ya });
+      }
+    }
+    return res;
+  };
+  return cut(0, 0, W, H, 0);
+}
+
+/** 切り出す。inset で内側へ縮める（ふちのにじみを落とす） */
+function crop(cv, { x, y, w, h }, inset = 0) {
+  const out = newCanvas(w - inset * 2, h - inset * 2);
+  ctxOf(out).drawImage(cv, x + inset, y + inset, out.width, out.height, 0, 0, out.width, out.height);
+  return out;
+}
+
+/** n×m ドットに縮める。各マスの中央 core の割合の平均色（JPEG のにじみを避ける） */
+function pixelate(cv, n, m = n, core = 0.5) {
+  const { width: W, height: H } = cv;
+  const d = ctxOf(cv).getImageData(0, 0, W, H).data;
+  const out = newCanvas(n, m);
+  const o = ctxOf(out);
+  const img = o.createImageData(n, m);
+  for (let j = 0; j < m; j++) for (let i = 0; i < n; i++) {
+    const cw = W / n, ch = H / m;
+    const x0 = Math.floor(i * cw + cw * (1 - core) / 2), x1 = Math.max(x0 + 1, Math.floor((i + 1) * cw - cw * (1 - core) / 2));
+    const y0 = Math.floor(j * ch + ch * (1 - core) / 2), y1 = Math.max(y0 + 1, Math.floor((j + 1) * ch - ch * (1 - core) / 2));
+    let r = 0, g = 0, b = 0, a = 0, k = 0;
+    for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+      const p = (y * W + x) * 4; r += d[p]; g += d[p + 1]; b += d[p + 2]; a += d[p + 3]; k++;
+    }
+    img.data.set([r / k, g / k, b / k, a / k], (j * n + i) * 4);
+  }
+  o.putImageData(img, 0, 0);
+  return out;
+}
+
+/** 色を k 色にまとめる（ドット絵らしく。k-means を数回） */
+function quantize(cv, k = 8) {
+  const o = ctxOf(cv);
+  const img = o.getImageData(0, 0, cv.width, cv.height);
+  const d = img.data, px = [];
+  for (let i = 0; i < d.length; i += 4) if (d[i + 3] > 127) px.push(i);
+  if (!px.length) return cv;
+  let cs = Array.from({ length: k }, (_, j) => { const i = px[Math.floor((j + 0.5) * px.length / k)]; return [d[i], d[i + 1], d[i + 2]]; });
+  const near = (i) => { let best = 0, bd = 1e9; cs.forEach((c, j) => { const e = (d[i] - c[0]) ** 2 + (d[i + 1] - c[1]) ** 2 + (d[i + 2] - c[2]) ** 2; if (e < bd) { bd = e; best = j; } }); return best; };
+  for (let it = 0; it < 8; it++) {
+    const sum = cs.map(() => [0, 0, 0, 0]);
+    for (const i of px) { const s = sum[near(i)]; s[0] += d[i]; s[1] += d[i + 1]; s[2] += d[i + 2]; s[3]++; }
+    cs = cs.map((c, j) => sum[j][3] ? [sum[j][0] / sum[j][3], sum[j][1] / sum[j][3], sum[j][2] / sum[j][3]] : c);
+  }
+  for (const i of px) { const c = cs[near(i)]; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2]; }
+  o.putImageData(img, 0, 0);
+  return cv;
+}
+
+/** ふちから白をたどって透明にする（絵の中の白は残る）。tol は白からの距離 */
+function cutout(cv, { tol = 40, feather = true } = {}) {
+  const { width: W, height: H } = cv;
+  const o = ctxOf(cv);
+  const img = o.getImageData(0, 0, W, H);
+  const d = img.data;
+  const dist = (p) => Math.max(255 - d[p], 255 - d[p + 1], 255 - d[p + 2]);
+  const seen = new Uint8Array(W * H);
+  const stack = [];
+  for (let x = 0; x < W; x++) stack.push(x, (H - 1) * W + x);
+  for (let y = 0; y < H; y++) stack.push(y * W, y * W + W - 1);
+  while (stack.length) {
+    const i = stack.pop();
+    if (seen[i]) continue;
+    seen[i] = 1;
+    if (dist(i * 4) > tol) continue;
+    d[i * 4 + 3] = 0;
+    const x = i % W, y = (i / W) | 0;
+    if (x > 0) stack.push(i - 1);
+    if (x < W - 1) stack.push(i + 1);
+    if (y > 0) stack.push(i - W);
+    if (y < H - 1) stack.push(i + W);
+  }
+  if (feather) {
+    // 透明のとなりの明るいふちを半透明にして白いにじみを消す
+    for (let i = 0; i < W * H; i++) {
+      if (d[i * 4 + 3] === 0) continue;
+      const x = i % W, y = (i / W) | 0;
+      const nb = [x > 0 && i - 1, x < W - 1 && i + 1, y > 0 && i - W, y < H - 1 && i + W].filter((v) => v !== false);
+      if (nb.some((j) => d[j * 4 + 3] === 0) && dist(i * 4) < tol * 2.5) d[i * 4 + 3] = Math.round(255 * dist(i * 4) / (tol * 2.5));
+    }
+  }
+  o.putImageData(img, 0, 0);
+  return cv;
+}
+
+/** 透明でない部分にぴったり切りつめる */
+function trim(cv, pad = 0) {
+  const { width: W, height: H } = cv;
+  const d = ctxOf(cv).getImageData(0, 0, W, H).data;
+  let x0 = W, y0 = H, x1 = -1, y1 = -1;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) if (d[(y * W + x) * 4 + 3] > 16) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  if (x1 < 0) return cv;
+  return crop(cv, { x: Math.max(0, x0 - pad), y: Math.max(0, y0 - pad), w: Math.min(W, x1 + 1 + pad) - Math.max(0, x0 - pad), h: Math.min(H, y1 + 1 + pad) - Math.max(0, y0 - pad) });
+}
+
+/** 透明の余白を足して正方形にする（縦横の比を保ったままドットにするため） */
+function square(cv) {
+  const s = Math.max(cv.width, cv.height);
+  const out = newCanvas(s, s);
+  ctxOf(out).drawImage(cv, Math.round((s - cv.width) / 2), Math.round((s - cv.height) / 2));
+  return out;
+}
+
+/** 半透明をなくす（ドット絵のふちをくっきり） */
+function hardAlpha(cv, cut = 110) {
+  const o = ctxOf(cv);
+  const img = o.getImageData(0, 0, cv.width, cv.height);
+  for (let i = 3; i < img.data.length; i += 4) img.data[i] = img.data[i] >= cut ? 255 : 0;
+  o.putImageData(img, 0, 0);
+  return cv;
+}
+
+/** 縦横の比を保って縮める（なめらか） */
+function resize(cv, w, h = Math.round(cv.height * w / cv.width)) {
+  const out = newCanvas(w, h);
+  const o = ctxOf(out);
+  o.imageSmoothingQuality = 'high';
+  o.drawImage(cv, 0, 0, w, h);
+  return out;
+}
+
+/** となりに並べて、くり返したときのつなぎ目を見る */
+function tile(cv, n = 3) {
+  const out = newCanvas(cv.width * n, cv.height * n);
+  const o = ctxOf(out);
+  for (let j = 0; j < n; j++) for (let i = 0; i < n; i++) o.drawImage(cv, i * cv.width, j * cv.height);
+  return out;
+}
+
+/** 画面に並べる（zoom 倍・ドットのまま） */
+function show(cv, label = '', zoom = 1) {
+  const fig = document.createElement('figure');
+  const v = newCanvas(cv.width, cv.height);
+  v.className = 'view';
+  v.style.width = cv.width * zoom + 'px';
+  ctxOf(v).drawImage(cv, 0, 0);
+  fig.append(v, Object.assign(document.createElement('figcaption'), { textContent: `${label} ${cv.width}×${cv.height}` }));
+  $out.append(fig);
+  return fig;
+}
+const clearView = () => { $out.innerHTML = ''; };
+
+/** PNG で保存（_inbox/ か src/assets/hype/ の中だけ） */
+async function save(cv, path) {
+  const blob = await new Promise((r) => cv.toBlob(r, 'image/png'));
+  const res = await fetch('/save?path=' + encodeURIComponent(path), { method: 'POST', body: blob });
+  if (!res.ok) throw new Error(await res.text());
+  return `${path} ${blob.size}B`;
+}
+
+Object.assign(window, { load, boxes, crop, pixelate, quantize, cutout, trim, square, hardAlpha, resize, tile, show, clearView, save, newCanvas, ctxOf });
+</script>
+</body>
+</html>

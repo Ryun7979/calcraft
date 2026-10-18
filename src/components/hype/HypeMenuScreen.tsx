@@ -82,7 +82,7 @@ export const HypeMenuScreen: React.FC<Props> = (props) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const x = r.left + r.width / 2;
     const y = r.top + r.height / 2;
-    fx.current?.burst(x, y, { count: 24, speed: 7, size: 8 });
+    fx.current?.burst(x, y, { count: 24, speed: 7, size: 8, sprites: ['star', 'note'] });
     fx.current?.ring(x, y, '#ffe14d', 90);
     battleRef.current?.say(pickPraise('select'));
     battleRef.current?.play('cheer');

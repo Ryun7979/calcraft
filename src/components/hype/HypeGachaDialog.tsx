@@ -64,7 +64,7 @@ export const HypeGachaDialog: React.FC<Props> = ({ progress, updateProgress, fx,
       const el = capRef.current?.getBoundingClientRect();
       const x = el ? el.left + el.width / 2 : window.innerWidth / 2;
       const y = el ? el.top + el.height / 2 : window.innerHeight / 2;
-      fx.current?.burst(x, y, { count: 50 + ri * 40, speed: 9 + ri * 2, size: 10 });
+      fx.current?.burst(x, y, { count: 50 + ri * 40, speed: 9 + ri * 2, size: 10, sprites: ['diamond', 'emerald', 'star', 'coin'] });
       fx.current?.ring(x, y, CAP[ri].cap, 180 + ri * 60);
       fx.current?.flash('#ffffff', 0.25 + ri * 0.1, 200, ri >= 2);
       if (ri >= 2) {

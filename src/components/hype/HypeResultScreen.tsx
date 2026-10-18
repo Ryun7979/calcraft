@@ -14,6 +14,7 @@ import { levelInfo, ROULETTE, spinRoulette } from '../../lib/hype/skills';
 import { INTENSITY, RankName, RULES } from '../../lib/hype/rules';
 import { hypeAudio } from '../../lib/hype/audio';
 import { pickPraise } from '../../lib/hype/praise';
+import { poseUrl, tileStyle } from '../../lib/hype/assets';
 import { bestKey, challengeKey, loadSave, mutateSave, Progress } from '../../lib/storage';
 import { settlePlay, SettleResult } from '../../lib/hype/rewards';
 import { dateKey, missionText } from '../../lib/hype/daily';
@@ -97,6 +98,8 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
   const [xpShown, setXpShown] = useState(progress.xp);
   const [rouletteFace, setRouletteFace] = useState<number | null>(null);
   const [levelUp, setLevelUp] = useState<number | null>(null);
+  /** ランク S 以上の発表で出す、トロフィーを持ち上げたふたりの絵 */
+  const [trophy, setTrophy] = useState(false);
   const xpInfo = levelInfo(xpShown);
 
   const both = (fn: (h: PixelCharHandle) => void) => {
@@ -294,7 +297,7 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
     const cx = r ? r.left + r.width / 2 : window.innerWidth / 2;
     const cy = r ? r.top + r.height / 2 : window.innerHeight / 2;
     fx.current?.setIntensity(prof);
-    fx.current?.burst(cx, cy, { count: 60 + rankIndex * 20, speed: 12, size: 11 });
+    fx.current?.burst(cx, cy, { count: 60 + rankIndex * 20, speed: 12, size: 11, sprites: ['star', 'coin', 'diamond'] });
     fx.current?.ring(cx, cy, '#ffffff', 260);
     fx.current?.ring(cx, cy, '#ffe14d', 180);
     fx.current?.bang(rank, cx + 90, cy - 70, '#ffe14d', 40);
@@ -310,6 +313,9 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
     });
     boyBubble.current?.say(RANK_PRAISE[rank], true);
     window.setTimeout(() => girlBubble.current?.say(RANK_PRAISE[rank], true), 300);
+    const showTrophy = rankIndex >= 3 && prof.hype > 0;
+    if (showTrophy) setTrophy(true);
+    const t2 = window.setTimeout(() => setTrophy(false), 2600);
     const t = window.setTimeout(() => {
       setStep('done');
       if ((best?.isNew && score > 0) || best?.isNewCorrect) {
@@ -320,7 +326,10 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
         both((h) => h.play('jump'));
       }
     }, 1400);
-    return () => window.clearTimeout(t);
+    return () => {
+      window.clearTimeout(t);
+      window.clearTimeout(t2);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step]);
 
@@ -343,7 +352,7 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
   const s = summary?.state;
 
   return (
-    <motion.div key="hype-result" {...pageTransition} className="w-full h-full relative flex items-center justify-center p-4 bg-stone">
+    <motion.div key="hype-result" {...pageTransition} className="w-full h-full relative flex items-center justify-center p-4" style={tileStyle('planks')}>
       {/* 左右にふたり（大きく） */}
       <div className="absolute left-0 bottom-0 h-[58%] aspect-[40/42] z-[65] pointer-events-none">
         <PixelChar ref={boyRef} who="boy" className="w-full h-full" />
@@ -356,6 +365,24 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
         <div className="absolute left-1/2 bottom-[66%] -translate-x-1/2">
           <PraiseBubble ref={girlBubble} tail="bottom" />
         </div>
+      </div>
+
+      {/* ランク S 以上：トロフィーを持ち上げたふたりが上から飛びこむ（2.6秒で消える） */}
+      <div className="absolute inset-x-0 top-[2%] flex justify-center z-[70] pointer-events-none">
+        <AnimatePresence>
+          {trophy && (
+            <motion.img
+              src={poseUrl('rank-trophy')}
+              alt=""
+              draggable={false}
+              className="h-[46vh] aspect-[159/89] hype-pose hype-glow"
+              initial={{ y: '-120%', scale: 0.4, rotate: -12 }}
+              animate={{ y: '0%', scale: 1, rotate: 0 }}
+              exit={{ y: '-30%', scale: 0.6, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 14 }}
+            />
+          )}
+        </AnimatePresence>
       </div>
 
       <div className="mc-panel relative z-10 w-full max-w-3xl max-h-[94vh] flex flex-col gap-3 !bg-black/80 !p-4">
@@ -463,11 +490,11 @@ export const HypeResultScreen: React.FC<Props> = ({ answers, summary, grade, op,
               </span>
             )}
             {xpRes.cleared.map((m) => (
-              <span key={m.id} className="hype-sticker px-3 py-0.5 whitespace-nowrap">
+              <span key={m.id} className="hype-plate px-2 whitespace-nowrap">
                 ミッション達成「{missionText(m)}」
               </span>
             ))}
-            {xpRes.allClear && <span className="hype-sticker px-3 py-0.5 whitespace-nowrap">3つ全部できた！ ボーナス</span>}
+            {xpRes.allClear && <span className="hype-plate px-2 whitespace-nowrap">3つ全部できた！ ボーナス</span>}
             {xpRes.missionCoins > 0 && <span className="text-yellow-300 whitespace-nowrap">ミッションのコイン +{xpRes.missionCoins}</span>}
             {restShown && (
               <span className="mc-panel !bg-sky-900/80 !border-sky-300 !py-1 !px-3 text-white whitespace-nowrap">
