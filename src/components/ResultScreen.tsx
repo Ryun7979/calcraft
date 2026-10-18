@@ -40,7 +40,7 @@ export const ResultScreen: React.FC<ResultScreenProps> = ({
           {answers.map((ans, i) => (
             <Panel key={i} className={cn(
               "p-3 flex items-center justify-between border-4",
-              ans.isCorrect ? "border-green-500 bg-green-900/20" : "border-red-500 bg-red-900/20"
+              ans.isCorrect ? "!border-green-500 !bg-green-900/20" : "!border-red-500 !bg-red-900/20"
             )}>
               <div className="flex items-center gap-4">
                 <span className="text-gray-400 font-bold text-sm">Q{i + 1}</span>

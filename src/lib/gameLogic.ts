@@ -61,8 +61,9 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
         num1 = random(11, 18);
         num2 = random((num1 % 10) + 1, 9);
       } else if (grade === 3) { // 2桁－1桁（繰り下がりなし）
-        num1 = random(11, 99);
-        num2 = random(1, num1 % 10 || 1);
+        const ones = random(1, 9); // 一の位が0だと必ず繰り下がるので1〜9から選ぶ
+        num1 = random(1, 9) * 10 + ones;
+        num2 = random(1, ones);
       } else if (grade === 4) { // 2桁－1桁（繰り下がりあり）
         num1 = random(21, 98);
         num2 = random((num1 % 10) + 1, 9);
@@ -132,10 +133,19 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
 
     case 'div': {
       let remainder = 0;
-      if (grade <= 3) { // 九九の逆（答えが1桁）
+      if (grade <= 1) { // 九九の逆（2, 3, 5の段）
+        const tables = [2, 3, 5];
+        num2 = tables[random(0, 2)];
+        answer = random(2, 9);
+        num1 = num2 * answer;
+      } else if (grade === 2) { // 九九の逆（全ての段）
         num2 = random(2, 9);
         answer = random(2, 9);
         num1 = num2 * answer;
+      } else if (grade === 3) { // 九九の逆（あまりあり、商が1桁）
+        num2 = random(2, 9);
+        answer = random(2, 9);
+        num1 = num2 * answer + random(1, num2 - 1);
       } else if (grade === 4) { // 2桁 ÷ 1桁（商が10以上）
         num2 = random(2, 9);
         answer = random(10, 20);
@@ -171,7 +181,7 @@ export const generateQuestion = (grade: Grade, op: Operation): Question => {
       return { 
         num1, num2, op, 
         answer: realAnswer, 
-        remainder: grade >= 4 ? realRemainder : undefined 
+        remainder: grade >= 3 ? realRemainder : undefined 
       };
     }
 

@@ -7,6 +7,7 @@ import { PlayingScreen } from './components/PlayingScreen';
 import { ResultScreen } from './components/ResultScreen';
 import { OptionsDialog } from './components/OptionsDialog';
 import { Button } from './components/ui/Button';
+import { FitStage } from './components/ui/FitStage';
 import { FxCanvas, FxHandle } from './components/hype/FxCanvas';
 import { HypeMenuScreen } from './components/hype/HypeMenuScreen';
 import { HypePlayingScreen, HypeSummary } from './components/hype/HypePlayingScreen';
@@ -93,100 +94,103 @@ export default function App() {
 
   return (
     <div className="h-screen w-screen flex items-center justify-center overflow-hidden bg-dirt select-none relative">
-      <AnimatePresence mode="wait">
-        {gameState === 'menu' && !hype && (
-          <MenuScreen
-            selectedGrade={selectedGrade}
-            setSelectedGrade={setSelectedGrade}
-            selectedOp={selectedOp}
-            setSelectedOp={setSelectedOp}
-            startGame={startGame}
-          />
-        )}
-        {gameState === 'menu' && hype && (
-          <HypeMenuScreen
-            key="hype-menu"
-            selectedGrade={selectedGrade}
-            setSelectedGrade={setSelectedGrade}
-            selectedOp={selectedOp}
-            setSelectedOp={setSelectedOp}
-            questionCount={settings.questionCount}
-            setQuestionCount={(n) => updateSettings({ questionCount: n })}
-            playMode={settings.playMode}
-            setPlayMode={(m) => updateSettings({ playMode: m })}
-            challengeMinutes={settings.challengeMinutes}
-            setChallengeMinutes={(m) => updateSettings({ challengeMinutes: m })}
-            startGame={startGame}
-            fx={fxRef}
-          />
+      {/* 画面が小さいときは中身をまるごと縮める（背景と演出レイヤーは外） */}
+      <FitStage>
+        <AnimatePresence mode="wait">
+          {gameState === 'menu' && !hype && (
+            <MenuScreen
+              selectedGrade={selectedGrade}
+              setSelectedGrade={setSelectedGrade}
+              selectedOp={selectedOp}
+              setSelectedOp={setSelectedOp}
+              startGame={() => startGame(false)}
+            />
+          )}
+          {gameState === 'menu' && hype && (
+            <HypeMenuScreen
+              key="hype-menu"
+              selectedGrade={selectedGrade}
+              setSelectedGrade={setSelectedGrade}
+              selectedOp={selectedOp}
+              setSelectedOp={setSelectedOp}
+              questionCount={settings.questionCount}
+              setQuestionCount={(n) => updateSettings({ questionCount: n })}
+              playMode={settings.playMode}
+              setPlayMode={(m) => updateSettings({ playMode: m })}
+              challengeMinutes={settings.challengeMinutes}
+              setChallengeMinutes={(m) => updateSettings({ challengeMinutes: m })}
+              startGame={startGame}
+              fx={fxRef}
+            />
+          )}
+
+          {gameState === 'playing' && !hype && (
+            <PlayingScreen
+              currentIndex={currentIndex}
+              selectedGrade={selectedGrade}
+              selectedOp={selectedOp}
+              questions={questions}
+              feedback={feedback}
+              showHint={showHint}
+              hintText={hintText}
+              levelChange={levelChange}
+              handleHint={handleHint}
+              handleAnswer={handleAnswer}
+            />
+          )}
+          {gameState === 'playing' && hype && (
+            <HypePlayingScreen
+              key="hype-playing"
+              currentIndex={currentIndex}
+              selectedGrade={selectedGrade}
+              selectedOp={selectedOp}
+              questions={questions}
+              feedback={feedback}
+              showHint={showHint}
+              hintText={hintText}
+              levelChange={levelChange}
+              handleHint={handleHint}
+              handleAnswer={handleAnswer}
+              endGame={endGame}
+              playMode={challenge ? 'challenge' : 'practice'}
+              challengeMinutes={settings.challengeMinutes}
+              intensity={settings.intensity}
+              fx={fxRef}
+              summaryRef={summaryRef}
+              holdRef={holdRef}
+            />
+          )}
+
+          {gameState === 'result' && !hype && (
+            <ResultScreen answers={answers} startGame={startGame} backToMenu={backToMenu} />
+          )}
+          {gameState === 'result' && hype && (
+            <HypeResultScreen
+              key="hype-result"
+              answers={answers}
+              summary={summaryRef.current}
+              grade={selectedGrade}
+              op={selectedOp}
+              intensity={settings.intensity}
+              fx={fxRef}
+              startGame={startGame}
+              backToMenu={backToMenu}
+            />
+          )}
+        </AnimatePresence>
+
+        {gameState === 'menu' && (
+          <Button onClick={openOptions} className="!absolute top-4 right-4 w-14 h-14 !p-0 z-[100]" aria-label="オプション">
+            <SettingsIcon className="w-7 h-7" />
+          </Button>
         )}
 
-        {gameState === 'playing' && !hype && (
-          <PlayingScreen
-            currentIndex={currentIndex}
-            selectedGrade={selectedGrade}
-            selectedOp={selectedOp}
-            questions={questions}
-            feedback={feedback}
-            showHint={showHint}
-            hintText={hintText}
-            levelChange={levelChange}
-            handleHint={handleHint}
-            handleAnswer={handleAnswer}
-          />
-        )}
-        {gameState === 'playing' && hype && (
-          <HypePlayingScreen
-            key="hype-playing"
-            currentIndex={currentIndex}
-            selectedGrade={selectedGrade}
-            selectedOp={selectedOp}
-            questions={questions}
-            feedback={feedback}
-            showHint={showHint}
-            hintText={hintText}
-            levelChange={levelChange}
-            handleHint={handleHint}
-            handleAnswer={handleAnswer}
-            endGame={endGame}
-            playMode={challenge ? 'challenge' : 'practice'}
-            challengeMinutes={settings.challengeMinutes}
-            intensity={settings.intensity}
-            fx={fxRef}
-            summaryRef={summaryRef}
-            holdRef={holdRef}
-          />
-        )}
-
-        {gameState === 'result' && !hype && (
-          <ResultScreen answers={answers} startGame={startGame} backToMenu={backToMenu} />
-        )}
-        {gameState === 'result' && hype && (
-          <HypeResultScreen
-            key="hype-result"
-            answers={answers}
-            summary={summaryRef.current}
-            grade={selectedGrade}
-            op={selectedOp}
-            intensity={settings.intensity}
-            fx={fxRef}
-            startGame={startGame}
-            backToMenu={backToMenu}
-          />
-        )}
-      </AnimatePresence>
-
-      {gameState === 'menu' && (
-        <Button onClick={openOptions} className="!absolute top-4 right-4 w-14 h-14 !p-0 z-[100]" aria-label="オプション">
-          <SettingsIcon className="w-7 h-7" />
-        </Button>
-      )}
-
-      <AnimatePresence>
-        {optionsOpen && (
-          <OptionsDialog settings={settings} onChange={updateSettings} onClose={() => setOptionsOpen(false)} />
-        )}
-      </AnimatePresence>
+        <AnimatePresence>
+          {optionsOpen && (
+            <OptionsDialog settings={settings} onChange={updateSettings} onClose={() => setOptionsOpen(false)} />
+          )}
+        </AnimatePresence>
+      </FitStage>
 
       {/* 演出レイヤー（マシマシモードだけ。クリックは下に通す） */}
       {hype && <FxCanvas ref={fxRef} />}

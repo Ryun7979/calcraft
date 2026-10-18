@@ -45,9 +45,9 @@ export const DIFFICULTY_INFO: DifficultyMapping = {
     10: { tendency: '3桁×3桁', grade: '小4〜5' },
   },
   div: {
-    1: { tendency: '九九のぎゃく（あまりなし）', grade: '小3' },
-    2: { tendency: '九九のぎゃく（あまりなし）', grade: '小3' },
-    3: { tendency: '九九のぎゃく（あまりなし）', grade: '小3' },
+    1: { tendency: '九九のぎゃく（2, 3, 5のだん）', grade: '小3' },
+    2: { tendency: '九九のぎゃく（すべてのだん）', grade: '小3' },
+    3: { tendency: '九九のぎゃく（あまりあり）', grade: '小3' },
     4: { tendency: '2桁÷1桁（商が2桁、あまりあり）', grade: '小4' },
     5: { tendency: '3桁÷1桁（キリの良い数、あまりあり）', grade: '小4' },
     6: { tendency: '3桁÷1桁（あまりあり）', grade: '小4' },

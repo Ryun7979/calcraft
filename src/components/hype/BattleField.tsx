@@ -104,7 +104,8 @@ export const BattleField = forwardRef<BattleHandle, Props>(function BattleField(
   const heroRight = () => {
     const root = rootRef.current?.getBoundingClientRect();
     const g = girlWrap.current?.getBoundingClientRect();
-    return root && g ? g.right - root.left : st.current.w * 0.35;
+    // 画面の縮小（FitStage）があっても、ゾンビの座標（縮小前の大きさ）にそろえる
+    return root && g && root.width > 0 ? ((g.right - root.left) * st.current.w) / root.width : st.current.w * 0.35;
   };
   const zombieW = () => st.current.h * 0.82 * ASPECT;
   const stopX = (i: number) => heroRight() + zombieW() * (0.05 + i * 0.7);
