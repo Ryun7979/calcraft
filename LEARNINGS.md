@@ -34,7 +34,7 @@
 - **このリポジトリのファイルは CRLF（`core.autocrlf=true`）。** スクリプトで置換するときは改行をそろえてから。
 - **この PC の `python` は Microsoft Store の入口だけで動かない。** スクリプトでの一括置換は `node -e` で書く。
 - **ポート 3000 を別のチャットの開発サーバーが使っていることがある。** そのときは一時的に `npx vite --port=3001 --strictPort` の設定を `launch.json` に足し、終わったら `git checkout -- .claude/launch.json` で戻す。
-- **【解決済み】`@types/react`（^19）を入れたので、`npm run lint` が JSX の props を見るようになった**（`docs/issues.md` #6）。入れた直後のエラーは 0 件だった。0 件のときは、存在しない props を渡す一時ファイルで本当に効いているか確かめる。`strict` はまだない（#7）。
+- **【解決済み】`@types/react`（^19）を入れたので、`npm run lint` が JSX の props を見るようになった**（`docs/issues.md` #6）。入れた直後のエラーは 0 件だった。0 件のときは、存在しない props を渡す一時ファイルで本当に効いているか確かめる。`strict: true` も入れた（#7、こちらもエラー 0 件）。
 - **Vite の開発サーバーはプロジェクト直下のファイルも配る。** だから `scripts/autoplay.js` はブラウザから `import('/scripts/autoplay.js')` で読める。
 
 ## Open Questions 要調整
